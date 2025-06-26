@@ -1,12 +1,13 @@
 from SimpleAWEngine.Board import Board
 from SimpleAWEngine.Unit import Unit, unitTypes
+from CO import CO, COs
 # from Board import Board
 # from Unit import Unit
 import random
 from collections import deque
 
 class Game:
-    def __init__(self, terrainCodes, terrainTypes, startingUnits={}):
+    def __init__(self, terrainCodes, terrainTypes, player1CO, player2CO, startingUnits={}):
         """
         terrain_codes: 2D list of map codes
         terrain_types: dict code→TerrainType
@@ -19,6 +20,10 @@ class Game:
 
         self.currentPlayer = 1 # 1, alternates to -1
         self.funds = {1: 1000, -1: 1000}
+
+    def getCO(self, player):
+        if player == 1: return self.player1CO
+        else: return self.player2CO
 
     def collectIncome(self):
         # sum city/base income owned
@@ -39,7 +44,10 @@ class Game:
                   if u.owner == self.currentPlayer]
         
         for unit in myUnits:
-            self.resupplyCheck(unit)
+            if self.getCO(self.currentPlayer) == "Rachel":
+                self.resupplyCheck(unit, modifier = 1)
+            else:
+                self.resupplyCheck(unit)
             if unit.unitType.stealthable and unit.unitType.isStealthed:
                 unit.unitType.fuel -= unit.unitType.stealthBurn
             elif unit.unitType.fuelBurn != 0:
@@ -209,7 +217,6 @@ class Game:
             case _:
                 if at.name == "Base" or at.name == "City":
                     unit.resupply(self, 20 + modifier)
-
 
     def endTurn(self):
         for unit in list(self.board.units.values()):

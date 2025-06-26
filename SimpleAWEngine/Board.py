@@ -131,6 +131,7 @@ class Board:
     def getDefenseBonus(self, x, y):
         return self.grid[y][x].defenseBonus
     
+
     def unitIsVisible(self, unit, viewer: int) -> bool:
         # 1) If it’s the same side, always show your own troops
         if unit.owner == viewer:
@@ -391,7 +392,7 @@ class Board:
         return targets
     
     def reduceCapturePoints(self, unit):
-        self.grid[unit.y][unit.x].capturePoints -= int(unit.health / 10)
+        self.grid[unit.y][unit.x].capturePoints -= int(unit.health / 10 * (1 + unit.unitType.captureBonus))
         remainingPoints = self.grid[unit.y][unit.x].capturePoints
         if (remainingPoints <= 0):
             if self.grid[unit.y][unit.x].name == "HQ":
@@ -400,6 +401,94 @@ class Board:
             else:
                 print(f"Building at {(unit.x, unit.y)} captured!")
             self.grid[unit.y][unit.x].owner = unit.owner
+    
+    def globalHPChange(self, owner, amount):
+        myUnits = [u for u in self.board.units.values()
+                  if u.owner == owner]
+        for unit in myUnits:
+            unit.health += amount
+
+    def globalValueChange(self, owner, discount):
+        myUnits = [u for u in self.board.units.values()
+                  if u.owner == owner]
+        for unit in myUnits:
+            unit.value *= discount
+
+
+    def globalMovementChange(self, owner, amount):
+        """
+        This function exists for when the catch-all Unit Modifier can't handle a CO's power
+        AKA The Block Rock Exception, because THIS LITERALLY ONLY APPLIES TO JAKE
+        Everybody else plays nice and boosts the stats of the same unit type every time.
+        All except for Jake. JAKE, GO FUCK YOURSELF
+        """
+        myUnits = [u for u in self.board.units.values()
+                  if u.owner == owner]
+        for unit in myUnits:
+            moveType = unit.unitType.moveType
+            if moveType == "TREAD" or moveType == "TIRE":
+                if unit.movement != 0: unit.movement += amount
+
+    def globalUnitModifier(self, owner, attackAmount, moveAmount, defenseAmount, type, indirBonus=0, captureModifier = 0):
+        myUnits = [u for u in self.board.units.values()
+                  if u.owner == owner]
+        match type:
+            case "INF":
+                for unit in myUnits: 
+                    moveType = unit.unitType.moveType
+                    if moveType == "INF" or moveType == "MEC": 
+                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+                        unit.unitType.captureBonus = captureModifier
+            case "DIRECT": # Direct always excludes footsoldiers
+                for unit in myUnits:
+                    moveType = unit.unitType.moveType
+                    if unit.unitType.minRange == 0 and moveType != "INF" and moveType != "MEC": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "INDIRECT":
+                for unit in myUnits:
+                    if unit.unitType.minRange != 0:
+                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+                        unit.unitType.maxRange += indirBonus
+            case "GROUND":
+                for unit in myUnits:
+                    moveType = unit.unitType.moveType
+                    if moveType == "TREAD" or moveType == "TIRE": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "AIR":
+                for unit in myUnits:
+                    if unit.unitType.moveType == "AIR": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "SEA":
+                for unit in myUnits:
+                    if unit.unitType.moveType == "SEA": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "COPTER":
+                for unit in myUnits:
+                    if unit.unitType.name == "BCP": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "TRANSPORT":
+                for unit in myUnits:
+                    if unit.unitType.transportsUnits == True and unit.movement != 0: unit.movement += moveAmount 
+            case "PLAINS": # Literally just Jake
+                for unit in myUnits:
+                    if self.getTerrain(unit.x, unit.y).name == "Plains": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "PROPERTIES": # Just for Kindle
+                for unit in myUnits:
+                    terName = self.getTerrain(unit.x, unit.y).name
+                    if terName == "City" or terName == "Base" or terName == "Harbor" or terName == "HQ" or terName == "Airport" or terName == "Com Tower":
+                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "ROADS": # Just for Koal
+                for unit in myUnits:
+                    terName = self.getTerrain(unit.x, unit.y).name
+                    if terName == "Road" or terName == "Bridge":
+                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case "ALL":
+                for unit in myUnits:
+                    self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+
+    def setHelper(attackAmount, moveAmount, defenseAmount, unit):
+        if attackAmount != 0: unit.attackModifier = attackAmount
+        if defenseAmount!= 0: unit.defenseModifier = defenseAmount
+        if unit.movement != 0: unit.movement += moveAmount
+
+            
+
+                
     
     def __repr__(self):
         return self.render(player=1)

@@ -20,6 +20,7 @@ class UnitType:
         self.stealthBurn = stealthBurn
         self.transportsUnits = transportsUnits
         self.transportCapacity = tranCapac
+        self.captureBonus = 0
         self.damageTable = DAMAGE_TABLE[unitName] # DAMAGE_TABLE is a dict mapping (attacker, defender) → base damage
 
 unitTypes = {
@@ -60,7 +61,8 @@ class Unit:
         self.movement = self.unitType.maxMovement        # movement points per turn
         self.attackAvailable = True
         self.turnOver = False
-        self.attackModifier = 100
+        self.attackModifier = 0
+        self.defenseModifier = 0
         if self.unitType.transportsUnits:
             self.loaded = []
 
@@ -79,7 +81,7 @@ class Unit:
                         if b.owner == self.owner and b.name == "Com Tower")
         return 100 + comBoost + self.attackModifier
 
-    def attack(self, defender, board):
+    def attack(self, defender, board, maxLuck=9):
         print("Attacking!")
         if self.unitType.ammo <= 0:
             print("Unit is out of ammo!")
@@ -96,7 +98,7 @@ class Unit:
             defenseBonus = board.getDefenseBonus(defender.x, defender.y)
             attackBonus = self.getAttackBoost(board)
             print(attackBonus)
-            damage = int((base * (attackBonus/100) * (self.health/100)) * ((100 - (10 * defenseBonus))/100)) + random.randint(0, 9)
+            damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(0, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
             defender.health -= damage
             self.unitType.ammo -= 1
             if defender.health <= 0:
@@ -106,7 +108,7 @@ class Unit:
                 base = defender.damageAgainst(self)
                 defenseBonus = board.getDefenseBonus(self.x, self.y)
                 attackBonus = 100
-                damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(0, 9)) * ((100 - (10 * defenseBonus))/100))
+                damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(0, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
                 self.health -= damage
                 defender.unitType.ammo -= 1
             if self.health <= 0:
