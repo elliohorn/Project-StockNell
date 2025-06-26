@@ -1,5 +1,4 @@
-from DamageTable import DAMAGE_TABLE 
-from Board import Board
+from SimpleAWEngine.DamageTable import DAMAGE_TABLE 
 import random
 
 class UnitType:
@@ -29,7 +28,7 @@ unitTypes = {
     "ART": UnitType("ART", "TREAD", 5, 1, 50, 9, 6000, 2, 3, 0),
     "BCP": UnitType("BCP", "AIR", 6, 3, 99, 6, 9000, 0, 0, 2),
     "BAT": UnitType("BAT", "SEA", 5, 2, 99, 9, 28000, 2, 6, 1),
-    "BLK": UnitType("BLK", "SEA", 7, 1, 60, 0, 7500, 0, 0, 1, transportsUnits=True, tranCapac=2),
+    "BLK": UnitType("BLK", "LANDER", 7, 1, 60, 0, 7500, 0, 0, 1, transportsUnits=True, tranCapac=2),
     "BLB": UnitType("BLB", "AIR", 9, 1, 45, 0, 25000, 0, 0, 5),
     "BOM": UnitType("BOM", "AIR", 7, 2, 99, 9, 22000, 0, 0, 5),
     "CAR": UnitType("CAR", "SEA", 5, 4, 99, 9, 30000, 3, 8, 1, transportsUnits=True, tranCapac=2),
@@ -61,6 +60,7 @@ class Unit:
         self.movement = self.unitType.maxMovement        # movement points per turn
         self.attackAvailable = True
         self.turnOver = False
+        self.attackModifier = 100
         if self.unitType.transportsUnits:
             self.loaded = []
 
@@ -74,9 +74,10 @@ class Unit:
         print("Capturing!")
         board.reduceCapturePoints(self)
 
-    def getComBoost(self, board):
-        return 100 + 10 * sum(1 for b in board.buildings.values()
+    def getAttackBoost(self, board):
+        comBoost = 10 * sum(1 for b in board.buildings.values()
                         if b.owner == self.owner and b.name == "Com Tower")
+        return 100 + comBoost + self.attackModifier
 
     def attack(self, defender, board):
         print("Attacking!")
@@ -93,7 +94,7 @@ class Unit:
             self.attackAvailable = False
             base = self.damageAgainst(defender)
             defenseBonus = board.getDefenseBonus(defender.x, defender.y)
-            attackBonus = self.getComBoost(board)
+            attackBonus = self.getAttackBoost(board)
             print(attackBonus)
             damage = int((base * (attackBonus/100) * (self.health/100)) * ((100 - (10 * defenseBonus))/100)) + random.randint(0, 9)
             defender.health -= damage
@@ -120,10 +121,13 @@ class Unit:
         self.attackAvailable = False
 
     def resupply(self, game, healthToHeal=0):
-        self.ammo = self.ammoMax
-        self.fuel = self.fuelMax
+        self.unitType.ammo = self.unitType.ammoMax
+        self.unitType.fuel = self.unitType.fuelMax
         if game.funds[game.currentPlayer] >= (healthToHeal/100) * self.unitType.value:
             self.health += healthToHeal
+            print(game.funds[game.currentPlayer])
+            game.funds[game.currentPlayer] -= (healthToHeal/100) * self.unitType.value 
+            print(game.funds[game.currentPlayer])
 
 
     def __repr__(self):

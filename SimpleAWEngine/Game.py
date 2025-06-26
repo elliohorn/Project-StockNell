@@ -1,5 +1,7 @@
-from Board import Board
-from Unit import Unit, unitTypes
+from SimpleAWEngine.Board import Board
+from SimpleAWEngine.Unit import Unit, unitTypes
+# from Board import Board
+# from Unit import Unit
 import random
 from collections import deque
 
@@ -26,119 +28,11 @@ class Game:
                 income += 1000 
         self.funds[self.currentPlayer] += income
 
-    # def playTurn(self, inputType=0, FOW=False):
-    #     myUnits = [u for u in self.board.units.values()
-    #                if u.owner == self.currentPlayer]
-        
-    #     for unit in myUnits:
-    #         while not unit.turnOver:
-    #             self.resupplyCheck(unit)
-    #             if unit.unitType.stealthable and unit.unitType.isStealthed:
-    #                 unit.unitType.fuel -= unit.unitType.stealthBurn
-    #             elif unit.unitType.fuelBurn != 0:
-    #                 unit.unitType.fuel -= unit.unitType.fuelBurn
-
-    #             moves, costs = self.board.get_legal_moves(unit)            
-
-    #             ## Pick moves. Currently random, but this will later be hooked
-    #             # to the AI or an input
-    #             if not moves:
-    #                 continue
-    #             if inputType == 0: # Random input
-    #                 dest = random.choice(moves)
-    #                 self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
-    #                 if unit.unitType.stealthable == True:
-    #                     if not unit.unitType.isStealthed: 
-    #                         unit.unitType.isStealthed = True
-    #                     else:
-    #                         unit.unitType.isStealthed = False
-    #                 if self.board.captureTargets(unit):
-    #                     unit.capture(self.board)
-    #                 else:
-    #                     enemies = self.board.get_attack_targets(unit)
-    #                     if enemies:
-    #                         unit.attack(random.choice(enemies), self.board)
-    #             elif inputType == 1: # Manual input
-    #                 print(self.board.render(self.currentPlayer))
-    #                 print(moves)
-    #                 moveChosen = int(input(f"Choose a move index from the above list. Current pos is {(unit.x,unit.y)}\n"))
-    #                 if moveChosen < len(moves): # Movement + unit loading
-    #                     dest = moves[moveChosen]
-    #                     occupant = self.board.units.get(dest)
-    #                     # --- Loading onto a transport? ---
-    #                     if (occupant 
-    #                         and occupant.owner == self.currentPlayer 
-    #                         and occupant.unitType.transportCapacity > 0
-    #                         and self.board.canLoad(occupant, unit)
-    #                     ):
-    #                         unit.x, unit.y = dest
-    #                         unit.movement = 0
-    #                         unit.attackAvailable = False
-    #                         self.board.loadUnit(occupant, unit)
-    #                         print(f"Loaded {unit} into {occupant}")
-    #                     else:
-    #                         self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
-
-    #                 if unit.unitType.transportsUnits and unit.loaded: # Transport unloading
-    #                     spots = self.board.getAdjacentPositions(unit, 0)
-    #                     if spots:
-    #                         print("Transport has:", unit.loaded)
-    #                         for i, pos in enumerate(spots):
-    #                             print(f"{i}: unload to {pos}")
-    #                             choice = int(input("Choose unload index, or -1 to skip: "))
-    #                             if 0 <= choice < len(spots):
-    #                                 destX, destY = spots[choice]
-    #                                 self.board.unloadUnit(unit, destX, destY)
-    #                                 print(f"Unloaded {unit.loaded[-1] if unit.loaded else 'unit'} to {(destX,destY)}")
-    #                 if unit.unitType.transportsUnits and unit.movement != 0: # Resupply units
-    #                     spots = self.board.getAdjacentPositions(unit, 2)
-    #                     if spots:
-    #                         choice = str(input("Resupply?\n"))
-    #                         if choice == "y":
-    #                             if unit.unitType.unitName == "APC":
-    #                                 for i in enumerate(spots):
-    #                                     destX, destY = spots[i]
-    #                                     self.board.units((destX, destY)).resupply(0)
-    #                             elif unit.unitType.unitName == "BLK":
-    #                                 for i, pos in enumerate(spots):
-    #                                     print(f"{i}: heal unit at {pos}")
-    #                                     choice = int(input("Choose heal index, or -1 to skip: "))
-    #                                     if 0 <= choice < len(spots):
-    #                                         destX, destY = spots[choice]
-    #                                         self.board.units((destX, destY)).resupply(10)
-                
-    #                 if unit.unitType.stealthable == True: # Stealth check
-    #                     if not unit.unitType.isStealthed: 
-    #                         stealth = input("Stealth this unit?\n")
-    #                         if stealth: unit.unitType.isStealthed = True
-    #                     else:
-    #                         stealth = input("Unstealth this unit?\n")
-    #                         if stealth: unit.unitType.isStealthed = False
-    #                 if self.board.captureTargets(unit): # Captures
-    #                     capt = input("Capture here? y/n\n") 
-    #                     if capt == "y":
-    #                         unit.capture(self.board)
-    #                 else: # Attacking
-    #                     enemies = self.board.get_attack_targets(unit)
-    #                     print(enemies)
-    #                     if enemies:
-    #                         print(self.board)
-    #                         enemy = int(input("Choose a unit index from the above list to attack. Enter -1 to not attack\n"))
-    #                         if enemy != -1 and enemy < len(enemies): 
-    #                             unit.attack(enemies[enemy], self.board)
-    #             self.board.updateVisibility(self.currentPlayer)
-    #             unit.checkTurnOver()
-    #     self.productionStep(inputType)
-    #     winner = self.endTurn() # Reset this player's unit's stats
-    #     if winner: return self.currentPlayer
-    #     print(f"It's now player {self.currentPlayer * -1}'s turn!")
-    #     self.currentPlayer *= -1
-
     def playTurn(self, inputType=0, FOW=False):
         # Build an initial queue of your units
         actionQueue = deque(
             u for u in self.board.units.values()
-            if u.owner == self.current_player
+            if u.owner == self.currentPlayer
         )
 
         myUnits = [u for u in self.board.units.values()
@@ -162,11 +56,11 @@ class Game:
                 continue
 
             # Show options, etc… like in your manual‐input branch
-            moves = self.board.get_legal_moves(unit)
-            print(self.board.render(self.current_player))
-            print(f"Unit: {unit} MP={unit.movement} Fuel={unit.fuel}")
-            for i, m in enumerate(moves):
-                print(f"{i}: → {m}")
+            moves, costs = self.board.get_legal_moves(unit)
+            print(self.board.render(self.currentPlayer))
+            print(f"Unit: {unit} MP={unit.movement} Fuel={unit.unitType.fuel}")
+            for i, dest in enumerate(moves):
+                print(f"{i}: → {dest} (cost {costs[dest]})")
             print(f"Actions: move, load, unload, capture, attack, stealth={unit.unitType.stealthable}, end")
             action = input("Action? ").strip().lower()
 
@@ -174,7 +68,8 @@ class Game:
                 case "move":
                     idx = int(input("Move index: "))
                     dest = moves[idx]
-                    self.board.moveUnit(unit.x, unit.y, *dest)
+                    self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
+                    actionQueue.appendleft(unit)
 
                 # _do not_ mark unit done—maybe you want to load/unload next
                 # action_queue.appendleft(unit)  # optionally replay immediately
@@ -228,6 +123,21 @@ class Game:
                         print("Unit not stealthable.")
                         actionQueue.appendleft(unit)
 
+                case "supply":
+                    spots = self.board.getAdjacentPositions(unit, 2)
+                    if unit.unitType.unitName == "APC":
+                        for i, pos in enumerate(spots):
+                            destX, destY = pos
+                            self.board.units[(destX, destY)].resupply(self, 0)
+                    elif unit.unitType.unitName == "BLK":
+                        for i, pos in enumerate(spots):
+                            print(f"{i}: heal unit at {pos}")
+                        choice = int(input("Choose heal index, or -1 to skip: "))
+                        if 0 <= choice < len(spots):
+                            destX, destY = spots[choice]
+                            print(destX, destY)
+                            self.board.units[(destX, destY)].resupply(self, 10)
+
                 case "end":
                     # mark this unit done for the rest of the turn
                     done.add(unit)
@@ -239,11 +149,11 @@ class Game:
         # After exhausting the queue, do your end_of_turn(), switch player, etc.
         self.productionStep(inputType)
         self.endTurn()
-        self.current_player *= -1
+        self.currentPlayer *= -1
 
     def productionStep(self, inputType):
-        for x in range(self.board.height):
-            for y in range(self.board.width):
+        for y in range(self.board.height):
+            for x in range(self.board.width):
                 terrain = self.board.getTerrain(x, y)
                 # 1) must be a production tile
                 if not terrain.canProduce():
@@ -281,23 +191,24 @@ class Game:
     def resupplyCheck(self, unit, modifier=0):
         if unit.unitType.transportsUnits:
             for unit in unit.loaded:
-                unit.resupply(0)
-            for unit in self.board.getAdjacentPositions(unit, 2):
-                if unit.owner == self.currentPlayer:
-                    unit.resupply(0)
+                unit.resupply(self, 0)
+            for adjUnit in self.board.getAdjacentPositions(unit, 2):
+                adjUnit = self.board.units.get(adjUnit)
+                if adjUnit.owner == self.currentPlayer:
+                    adjUnit.resupply(self, 0)
             
         at = self.board.grid[unit.y][unit.x]
         if at.owner != unit.owner: return # Can't resupply on enemy or neutral city
         match unit.unitType.moveType:
             case "SEA":
                 if at.name == "Harbor":
-                    unit.resupply(20 + modifier)
+                    unit.resupply(self, 20 + modifier)
             case "AIR":
                 if at.name == "Airport":
-                    unit.resupply(20 + modifier)
+                    unit.resupply(self, 20 + modifier)
             case _:
                 if at.name == "Base" or at.name == "City":
-                    unit.resupply(20 + modifier)
+                    unit.resupply(self, 20 + modifier)
 
 
     def endTurn(self):
@@ -326,7 +237,7 @@ class Game:
         if not hqCoords: # Check for total lab captures on maps with no HQs
             labCoords = [pos for pos, b in self.board.buildings.items() if b.name == "Lab"]
             # if current player has zero labs, they lose
-            myLabs = [c for c in labCoords if self.board.buildings[c].owner == self.current_player]
+            myLabs = [c for c in labCoords if self.board.buildings[c].owner == self.currentPlayer]
             if not myLabs:
                 return opp
         return self.checkDominationVictory() # Check for domination victory

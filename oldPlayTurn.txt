@@ -1,0 +1,107 @@
+# def playTurn(self, inputType=0, FOW=False):
+    #     myUnits = [u for u in self.board.units.values()
+    #                if u.owner == self.currentPlayer]
+        
+    #     for unit in myUnits:
+    #         while not unit.turnOver:
+    #             self.resupplyCheck(unit)
+    #             if unit.unitType.stealthable and unit.unitType.isStealthed:
+    #                 unit.unitType.fuel -= unit.unitType.stealthBurn
+    #             elif unit.unitType.fuelBurn != 0:
+    #                 unit.unitType.fuel -= unit.unitType.fuelBurn
+
+    #             moves, costs = self.board.get_legal_moves(unit)            
+
+    #             ## Pick moves. Currently random, but this will later be hooked
+    #             # to the AI or an input
+    #             if not moves:
+    #                 continue
+    #             if inputType == 0: # Random input
+    #                 dest = random.choice(moves)
+    #                 self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
+    #                 if unit.unitType.stealthable == True:
+    #                     if not unit.unitType.isStealthed: 
+    #                         unit.unitType.isStealthed = True
+    #                     else:
+    #                         unit.unitType.isStealthed = False
+    #                 if self.board.captureTargets(unit):
+    #                     unit.capture(self.board)
+    #                 else:
+    #                     enemies = self.board.get_attack_targets(unit)
+    #                     if enemies:
+    #                         unit.attack(random.choice(enemies), self.board)
+    #             elif inputType == 1: # Manual input
+    #                 print(self.board.render(self.currentPlayer))
+    #                 print(moves)
+    #                 moveChosen = int(input(f"Choose a move index from the above list. Current pos is {(unit.x,unit.y)}\n"))
+    #                 if moveChosen < len(moves): # Movement + unit loading
+    #                     dest = moves[moveChosen]
+    #                     occupant = self.board.units.get(dest)
+    #                     # --- Loading onto a transport? ---
+    #                     if (occupant 
+    #                         and occupant.owner == self.currentPlayer 
+    #                         and occupant.unitType.transportCapacity > 0
+    #                         and self.board.canLoad(occupant, unit)
+    #                     ):
+    #                         unit.x, unit.y = dest
+    #                         unit.movement = 0
+    #                         unit.attackAvailable = False
+    #                         self.board.loadUnit(occupant, unit)
+    #                         print(f"Loaded {unit} into {occupant}")
+    #                     else:
+    #                         self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
+
+    #                 if unit.unitType.transportsUnits and unit.loaded: # Transport unloading
+    #                     spots = self.board.getAdjacentPositions(unit, 0)
+    #                     if spots:
+    #                         print("Transport has:", unit.loaded)
+    #                         for i, pos in enumerate(spots):
+    #                             print(f"{i}: unload to {pos}")
+    #                             choice = int(input("Choose unload index, or -1 to skip: "))
+    #                             if 0 <= choice < len(spots):
+    #                                 destX, destY = spots[choice]
+    #                                 self.board.unloadUnit(unit, destX, destY)
+    #                                 print(f"Unloaded {unit.loaded[-1] if unit.loaded else 'unit'} to {(destX,destY)}")
+    #                 if unit.unitType.transportsUnits and unit.movement != 0: # Resupply units
+    #                     spots = self.board.getAdjacentPositions(unit, 2)
+    #                     if spots:
+    #                         choice = str(input("Resupply?\n"))
+    #                         if choice == "y":
+    #                             if unit.unitType.unitName == "APC":
+    #                                 for i in enumerate(spots):
+    #                                     destX, destY = spots[i]
+    #                                     self.board.units((destX, destY)).resupply(0)
+    #                             elif unit.unitType.unitName == "BLK":
+    #                                 for i, pos in enumerate(spots):
+    #                                     print(f"{i}: heal unit at {pos}")
+    #                                     choice = int(input("Choose heal index, or -1 to skip: "))
+    #                                     if 0 <= choice < len(spots):
+    #                                         destX, destY = spots[choice]
+    #                                         self.board.units((destX, destY)).resupply(10)
+                
+    #                 if unit.unitType.stealthable == True: # Stealth check
+    #                     if not unit.unitType.isStealthed: 
+    #                         stealth = input("Stealth this unit?\n")
+    #                         if stealth: unit.unitType.isStealthed = True
+    #                     else:
+    #                         stealth = input("Unstealth this unit?\n")
+    #                         if stealth: unit.unitType.isStealthed = False
+    #                 if self.board.captureTargets(unit): # Captures
+    #                     capt = input("Capture here? y/n\n") 
+    #                     if capt == "y":
+    #                         unit.capture(self.board)
+    #                 else: # Attacking
+    #                     enemies = self.board.get_attack_targets(unit)
+    #                     print(enemies)
+    #                     if enemies:
+    #                         print(self.board)
+    #                         enemy = int(input("Choose a unit index from the above list to attack. Enter -1 to not attack\n"))
+    #                         if enemy != -1 and enemy < len(enemies): 
+    #                             unit.attack(enemies[enemy], self.board)
+    #             self.board.updateVisibility(self.currentPlayer)
+    #             unit.checkTurnOver()
+    #     self.productionStep(inputType)
+    #     winner = self.endTurn() # Reset this player's unit's stats
+    #     if winner: return self.currentPlayer
+    #     print(f"It's now player {self.currentPlayer * -1}'s turn!")
+    #     self.currentPlayer *= -1

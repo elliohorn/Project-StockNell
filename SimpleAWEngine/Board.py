@@ -1,18 +1,18 @@
-import Unit
+from SimpleAWEngine.Unit import Unit
 import heapq
 import copy
 from typing import List, Tuple, Dict, Any
 from pprint import pprint
 
 class TerrainType:
-    def __init__(self, name, infMoveCost, mecMoveCost, treadMoveCost, tireMoveCost, airMoveCost, boatMoveCost, landerMoveCost, prnMoveCost, capturable, defenseBonus, produces = None, owner=None):
+    def __init__(self, name, infMoveCost, mecMoveCost, treadMoveCost, tireMoveCost, airMoveCost, seaMoveCost, landerMoveCost, prnMoveCost, capturable, defenseBonus, produces = None, owner=None):
         self.name          = name            # e.g. 'Plains', 'Forest'
         self.infMoveCost     = infMoveCost       # MP cost to enter
         self.mecMoveCost     = mecMoveCost
         self.treadMoveCost     = treadMoveCost
         self.tireMoveCost     = tireMoveCost
         self.airMoveCost     = airMoveCost
-        self.boatMoveCost     = boatMoveCost
+        self.seaMoveCost     = seaMoveCost
         self.landerMoveCost     = landerMoveCost
         self.prnMoveCost     = prnMoveCost
         self.capturable = capturable
@@ -124,7 +124,7 @@ class Board:
             case "SEA":
                 return self.grid[y][x].seaMoveCost
             case "LANDER":
-                return self.grid[y][x].labderMoveCost
+                return self.grid[y][x].landerMoveCost
             case "PIPE":
                 return self.grid[y][x].prnMoveCost
 
