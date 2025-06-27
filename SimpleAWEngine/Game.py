@@ -1,6 +1,6 @@
 from SimpleAWEngine.Board import Board
 from SimpleAWEngine.Unit import Unit, unitTypes
-from CO import CO, COs
+from SimpleAWEngine.CO import CO#, COs
 # from Board import Board
 # from Unit import Unit
 import random
@@ -20,6 +20,9 @@ class Game:
 
         self.currentPlayer = 1 # 1, alternates to -1
         self.funds = {1: 1000, -1: 1000}
+        self.player1CO = player1CO
+        self.player2CO = player2CO
+        self.weather = "CLEAR"
 
     def getCO(self, player):
         if player == 1: return self.player1CO
@@ -32,6 +35,9 @@ class Game:
             if b.owner == self.currentPlayer and b.name in ("City","Base","Aiport","Harbor","HQ"):
                 income += 1000 
         self.funds[self.currentPlayer] += income
+
+    def setWeather(self, weather):
+        self.weather = weather
 
     def playTurn(self, inputType=0, FOW=False):
         # Build an initial queue of your units
@@ -117,7 +123,12 @@ class Game:
                     for i, e in enumerate(enemies):
                         print(f"{i}: {e}")
                     idx = int(input("Enemy index: "))
-                    self.board.attack(unit, enemies[idx], self.board)
+                    if self.getCO(self.currentPlayer) == "Sasha" and self.getCO(self.currentPlayer).powerStage == 2:
+                        fundsToAdd = self.board.attack(unit, enemies[idx], self.board)
+                        if fundsToAdd is not None:
+                            self.funds[self.currentPlayer] += 0.50 * fundsToAdd
+                    else:
+                        self.board.attack(unit, enemies[idx], self.board)
 
                 case "stealth":
                     if unit.unitType.stealthable:

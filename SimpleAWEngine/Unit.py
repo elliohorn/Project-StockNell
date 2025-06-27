@@ -7,6 +7,7 @@ class UnitType:
         self.moveType = moveType
         self.maxMovement = movement
         self.vision       = vision        # sight range
+        self.baseVision = vision
         self.fuel         = fuel       # remaining fuel
         self.fuelMax = fuel
         self.ammo         = ammo        # remaining ammo
@@ -63,6 +64,7 @@ class Unit:
         self.turnOver = False
         self.attackModifier = 0
         self.defenseModifier = 0
+        self.counterModifier = 1
         if self.unitType.transportsUnits:
             self.loaded = []
 
@@ -76,12 +78,22 @@ class Unit:
         print("Capturing!")
         board.reduceCapturePoints(self)
 
-    def getAttackBoost(self, board):
-        comBoost = 10 * sum(1 for b in board.buildings.values()
+    def getComBoost(self, game):
+        if (game.getCO(self.owner) == "Javier"):
+            if game.getCO(self.owner).powerStage == 1:
+                return 2 * 10 * sum(1 for b in game.board.buildings.values()
                         if b.owner == self.owner and b.name == "Com Tower")
-        return 100 + comBoost + self.attackModifier
+            elif game.getCO(self.owner).powerStage == 2:
+                return 3 * 10 * sum(1 for b in game.board.buildings.values()
+                        if b.owner == self.owner and b.name == "Com Tower")
+        else:
+            return 10 * sum(1 for b in game.board.buildings.values()
+                        if b.owner == self.owner and b.name == "Com Tower")
 
-    def attack(self, defender, board, maxLuck=9):
+    def getAttackBoost(self, game):
+        return 100 + self.getComBoost(game.board) + self.attackModifier
+
+    def attack(self, defender, board, minLuck=0, maxLuck=9):
         print("Attacking!")
         if self.unitType.ammo <= 0:
             print("Unit is out of ammo!")
@@ -98,7 +110,7 @@ class Unit:
             defenseBonus = board.getDefenseBonus(defender.x, defender.y)
             attackBonus = self.getAttackBoost(board)
             print(attackBonus)
-            damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(0, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
+            damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
             defender.health -= damage
             self.unitType.ammo -= 1
             if defender.health <= 0:
@@ -108,15 +120,17 @@ class Unit:
                 base = defender.damageAgainst(self)
                 defenseBonus = board.getDefenseBonus(self.x, self.y)
                 attackBonus = 100
-                damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(0, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
+                damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
                 self.health -= damage
                 defender.unitType.ammo -= 1
             if self.health <= 0:
                 print("Unit lost attacking!")
                 board.removeUnit(self, self.x, self.y)
+            print(f"Attacker: {self.health}, Defender: {defender.health}")
+            return (damage/100) * defender.unitType.value
         else:
             print("Unit unable to attack!")
-        print(f"Attacker: {self.health}, Defender: {defender.health}")
+        
 
     def wait(self):
         self.movement = 0

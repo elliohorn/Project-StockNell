@@ -39,6 +39,7 @@ print(board)
 # 2. Modify the random input to include all the cases that Manual has
 # 3. Allow for attack modifiers (this will come with CO implementation)
 # 4. Healing needs to drain funds DONE
+# 5. Weather effects
 
 
 

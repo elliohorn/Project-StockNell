@@ -5,6 +5,7 @@ from collections import deque
 from SimpleAWEngine.Game import Game
 from SimpleAWEngine.Unit import UnitType, Unit, unitTypes
 from SimpleAWEngine.Board import Board, terrain_types
+from SimpleAWEngine.CO import CO
 
 # --- Dummy classes to isolate playTurn logic ---
 
@@ -69,6 +70,8 @@ class DummyGame(Game):
         # Bypass the real Game initialization
         self.currentPlayer = 1
         self.board = DummyBoard()
+        self.player1CO = None
+        self.player2CO = None
         # No-op production and turn-end
         self.productionStep = lambda inputType: None
         self.endTurn = lambda : None
@@ -120,7 +123,7 @@ def test_autoresupply(monkeypatch):
     unit.unitType.ammo = 0
     unit.unitType.fuel = 0
     unit.health = 80
-    game = Game(terrain_codes, terrain_types, startingUnits)
+    game = Game(terrain_codes, terrain_types, player1CO=None, player2CO=None, startingUnits=startingUnits)
 
     inputs = iter(['end'])
     monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
@@ -142,7 +145,7 @@ def test_manual_supply(monkeypatch):
     unit1.unitType.fuel = 0 
     unit2.unitType.fuel = 0
     unit2.health = 90
-    game = Game(terrain_codes, terrain_types, startingUnits)
+    game = Game(terrain_codes, terrain_types, player1CO=None, player2CO=None, startingUnits=startingUnits)
 
     inputs = iter(['end', 'supply', 'end', 'supply', 0])
     monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
@@ -158,7 +161,7 @@ def test_fuel_consumption(monkeypatch):
                      (Unit(1,unitTypes.get('BOM')), 1, 0),
                      (Unit(1,unitTypes.get('SUB')), 0, 2),
                      (Unit(-1,unitTypes.get('INF')), 1, 2)]
-    game = Game(terrain_codes, terrain_types, startingUnits)
+    game = Game(terrain_codes, terrain_types, player1CO=None, player2CO=None, startingUnits=startingUnits)
 
     inputs = iter(['move', 0, 'end', 'end', 'stealth', 'end', 'end', 'end', 'end'])
     monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
@@ -226,5 +229,20 @@ def test_unload_places_and_boosts(transport_and_unit):
     # and soldier removed from transport.loaded
     assert soldier not in transport.loaded
     assert soldier2 not in transport.loaded
+
+def test_parsing():
+    max = CO("Max", 3, 6, None, None, None, player=1)
+    terrain_codes = [[('P',0),('P',0)], [('P',0),('P',0)], [('S',0),('P',0)]]
+    startingUnits = [(Unit(1,unitTypes.get('TNK')), 0, 0), 
+                     (Unit(1,unitTypes.get('BOM')), 1, 0),
+                     (Unit(1,unitTypes.get('SUB')), 0, 2),
+                     (Unit(-1,unitTypes.get('INF')), 1, 2)]
+    unit1 = startingUnits[0][0]
+    game = Game(terrain_codes, terrain_types, player1CO=None, player2CO=None, startingUnits=startingUnits)
+    powers = CO.parsePowers()
+    print(powers)
+    print(powers["maxBlast"])
+    max.basicPower(values=powers["maxBlast"], board=game.board)
+    assert unit1.movement == 8 and unit1.attackModifier == 50
 
 

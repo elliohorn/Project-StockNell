@@ -429,59 +429,70 @@ class Board:
             if moveType == "TREAD" or moveType == "TIRE":
                 if unit.movement != 0: unit.movement += amount
 
-    def globalUnitModifier(self, owner, attackAmount, moveAmount, defenseAmount, type, indirBonus=0, captureModifier = 0):
-        myUnits = [u for u in self.board.units.values()
+    def globalUnitModifier(self, owner, modifiers):
+        myUnits = [u for u in self.units.values()
                   if u.owner == owner]
+        if len(modifiers) == 0: return
+
+        attackAmount = int(modifiers[0].strip("("))
+        moveAmount = int(modifiers[1])
+        defenseAmount = int(modifiers[2])
+        type = modifiers[3].strip(")").strip("'")
+        if len(modifiers) == 4 and type == "INF": captureModifier = float(modifiers[4])
+        elif len(modifiers) == 4 and type == "INDIRECT": indirBonus = int(modifiers[4])
+        #print(f"{type} == 'DIRECT' {type == 'DIRECT'}")
+        print(repr(type), repr('DIRECT'))
         match type:
-            case "INF":
+            case 'INF':
                 for unit in myUnits: 
                     moveType = unit.unitType.moveType
                     if moveType == "INF" or moveType == "MEC": 
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
                         unit.unitType.captureBonus = captureModifier
-            case "DIRECT": # Direct always excludes footsoldiers
+            case 'DIRECT': # Direct always excludes footsoldiers
+                print(myUnits)
                 for unit in myUnits:
                     moveType = unit.unitType.moveType
                     if unit.unitType.minRange == 0 and moveType != "INF" and moveType != "MEC": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "INDIRECT":
+            case 'INDIRECT':
                 for unit in myUnits:
                     if unit.unitType.minRange != 0:
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
                         unit.unitType.maxRange += indirBonus
-            case "GROUND":
+            case 'GROUND':
                 for unit in myUnits:
                     moveType = unit.unitType.moveType
                     if moveType == "TREAD" or moveType == "TIRE": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "AIR":
+            case 'AIR':
                 for unit in myUnits:
                     if unit.unitType.moveType == "AIR": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "SEA":
+            case 'SEA':
                 for unit in myUnits:
                     if unit.unitType.moveType == "SEA": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "COPTER":
+            case 'COPTER':
                 for unit in myUnits:
                     if unit.unitType.name == "BCP": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "TRANSPORT":
+            case 'TRANSPORT':
                 for unit in myUnits:
                     if unit.unitType.transportsUnits == True and unit.movement != 0: unit.movement += moveAmount 
-            case "PLAINS": # Literally just Jake
+            case 'PLAINS': # Literally just Jake
                 for unit in myUnits:
                     if self.getTerrain(unit.x, unit.y).name == "Plains": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "PROPERTIES": # Just for Kindle
+            case 'PROPERTIES': # Just for Kindle
                 for unit in myUnits:
                     terName = self.getTerrain(unit.x, unit.y).name
                     if terName == "City" or terName == "Base" or terName == "Harbor" or terName == "HQ" or terName == "Airport" or terName == "Com Tower":
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "ROADS": # Just for Koal
+            case 'ROADS': # Just for Koal
                 for unit in myUnits:
                     terName = self.getTerrain(unit.x, unit.y).name
                     if terName == "Road" or terName == "Bridge":
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case "ALL":
+            case 'ALL':
                 for unit in myUnits:
                     self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
 
-    def setHelper(attackAmount, moveAmount, defenseAmount, unit):
+    def setHelper(self, attackAmount, moveAmount, defenseAmount, unit):
         if attackAmount != 0: unit.attackModifier = attackAmount
         if defenseAmount!= 0: unit.defenseModifier = defenseAmount
         if unit.movement != 0: unit.movement += moveAmount
