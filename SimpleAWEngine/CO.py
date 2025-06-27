@@ -33,11 +33,13 @@ class CO:
     def activate_co(self, game):
         if self.coStars > self.copStars:
             self.co_meter -= self.copStars * 5000
+            self.powerStage = 1
             self.coPower(game)
     
     def activate_super(self, game):
         if self.coStars > self.scopStars:
             self.co_meter = 0
+            self.powerStage = 2
             self.superPower(game.board)
 
     def parsePowers():
@@ -111,7 +113,7 @@ class CO:
     def powerOfMoney(self, game):
         firepowerBoost = -10 + (3 * (game.funds[self.player]/1000))
         colin = POWERS_LOOKUP.get("colin")
-        colin[4] = f"{firepowerBoost},0,0,'ALL')" # Modify the data line to change the firepower boost
+        colin[3] = f"{firepowerBoost},0,0,'ALL')" # Modify the data line to change the firepower boost
         self.basicPower(colin, game.board)
     
     def marketCrash(self, game):
@@ -183,15 +185,33 @@ class CO:
                     if u.owner == self.player]
         for unit in myUnits: unit.unitType.vision = unit.unitType.baseVision + 2
         # SEE INTO HIDING PLACES SHOULD BE ADDED WHEN FOG IS WANTED
-
     
-        
+    def urbanBlight(self, game):
+        enemyUnits = [u for u in game.board.units.values()
+                    if u.owner != self.player
+                    and game.board.getTerrain(u.x,u.y).name in ("City","Base","Aiport","Harbor","HQ")]
+        for unit in enemyUnits: 
+            if unit.health > 30:
+                unit.health -= 30
+            else:
+                unit.health = 1 
+    
+    def highSociety(self, game):
+        for (x,y), b in game.board.buildings.items():
+            if b.owner == game.currentPlayer and b.name in ("City","Base","Aiport","Harbor","HQ"):
+                firepowerBonus += 3
+        powerList = ['','','',f"({firepowerBonus},0,0,'ALL')",'']
+        self.basicPower(powerList, game.board)
+
+    def perfectMovement(self, game):
+        if game.weather != "SNOW":
+            game.board.flatMoveCost = True
+
+    def missilePowers(self, game):
+        pass
 
     # POWERS THAT REQUIRE SPECIAL FUNCTIONS:
     # Covering Fire TODO
-    # All of Sonja TODO
-    # Urban Blight, High Society TODO
-    # All of Lash TODO
     # Meteor Strike TODO
     # Ex Machina TODO
     

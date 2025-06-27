@@ -63,6 +63,7 @@ class Board:
         self.height = len(terrainCodes)
         self.width  = len(terrainCodes[0]) if self.height>0 else 0
         self.fog = FOW
+        self.flatMoveCost = False
 
         # Build a 2D grid of TerrainType objects
         # self.grid = [
@@ -110,26 +111,32 @@ class Board:
         return self.grid[y][x].owner
 
     def getMoveCost(self, x, y, unitType):
-        match unitType:
-            case "INF":
-                return self.grid[y][x].infMoveCost
-            case "MEC":
-                return self.grid[y][x].mecMoveCost
-            case "TIRE":
-                return self.grid[y][x].tireMoveCost
-            case "TREAD":
-                return self.grid[y][x].treadMoveCost
-            case "AIR":
-                return self.grid[y][x].airMoveCost
-            case "SEA":
-                return self.grid[y][x].seaMoveCost
-            case "LANDER":
-                return self.grid[y][x].landerMoveCost
-            case "PIPE":
-                return self.grid[y][x].prnMoveCost
+        if self.flatMoveCost == True:
+            return 1
+        else:
+            match unitType:
+                case "INF":
+                    return self.grid[y][x].infMoveCost
+                case "MEC":
+                    return self.grid[y][x].mecMoveCost
+                case "TIRE":
+                    return self.grid[y][x].tireMoveCost
+                case "TREAD":
+                    return self.grid[y][x].treadMoveCost
+                case "AIR":
+                    return self.grid[y][x].airMoveCost
+                case "SEA":
+                    return self.grid[y][x].seaMoveCost
+                case "LANDER":
+                    return self.grid[y][x].landerMoveCost
+                case "PIPE":
+                    return self.grid[y][x].prnMoveCost
 
-    def getDefenseBonus(self, x, y):
-        return self.grid[y][x].defenseBonus
+    def getDefenseBonus(self, unit, x, y, game):
+        if game.getCO(unit.owner).name == "Lash" and game.getCO(unit.owner).powerStage == 2: 
+            return self.grid[y][x].defenseBonus * 2
+        else:
+            return self.grid[y][x].defenseBonus
     
 
     def unitIsVisible(self, unit, viewer: int) -> bool:
@@ -475,7 +482,7 @@ class Board:
             case 'TRANSPORT':
                 for unit in myUnits:
                     if unit.unitType.transportsUnits == True and unit.movement != 0: unit.movement += moveAmount 
-            case 'PLAINS': # Literally just Jake
+            case 'PLAINS': # Literally just Jake. These might not be necessary.
                 for unit in myUnits:
                     if self.getTerrain(unit.x, unit.y).name == "Plains": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
             case 'PROPERTIES': # Just for Kindle

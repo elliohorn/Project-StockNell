@@ -40,6 +40,7 @@ print(board)
 # 3. Allow for attack modifiers (this will come with CO implementation)
 # 4. Healing needs to drain funds DONE
 # 5. Weather effects
+# 6. Terrain based attackers need to be checked at the time of attack, not the start of the turn
 
 
 

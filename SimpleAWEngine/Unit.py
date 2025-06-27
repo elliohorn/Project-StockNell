@@ -90,43 +90,71 @@ class Unit:
             return 10 * sum(1 for b in game.board.buildings.values()
                         if b.owner == self.owner and b.name == "Com Tower")
 
-    def getAttackBoost(self, game):
-        return 100 + self.getComBoost(game.board) + self.attackModifier
+    def terrainDependentBoosts(self, x, y, game):
+        tileOn = game.board.getTerrain(x,y)
+        match game.getCO(self.owner).name:
+            case "Jake":
+                if tileOn.name == "Plains":
+                    match game.getCO(self.owner).powerStage:
+                        case 0: return 10
+                        case 1: return 20
+                        case 2: return 40
+            case "Kindle":
+                if tileOn.name in ("City","Base","Aiport","Harbor","HQ"):
+                    match game.getCO(self.owner).powerStage:
+                        case 0: return 40
+                        case 1: return 80
+                        case 2: return 130
+            case "Koal":
+                if tileOn.name in ("Road", "Bridge"): return 10 + 10 * game.getCO(self.owner).powerStage
+            case "Lash":
+                return 10 * tileOn.defenseBonus * game.getCO(self.owner).powerStage
 
-    def attack(self, defender, board, minLuck=0, maxLuck=9):
+
+    def getAttackBoost(self, game):
+        return 100 + self.getComBoost(game) + self.attackModifier + self.terrainDependentBoosts(self.x, self.y, game)
+
+    def attack(self, defender, game, minLuck=0, maxLuck=9):
+        board = game.board
+        attacker = self
+        if game.getCO(self.owner) == "Sonja" and game.getCO(self.owner).powerStage == 2:
+            # If counter break is active, we switch who is attacking
+            temp = defender
+            defender = attacker
+            attacker = defender
         print("Attacking!")
-        if self.unitType.ammo <= 0:
+        if attacker.unitType.ammo <= 0:
             print("Unit is out of ammo!")
             return None
-        if ((self.unitType.minRange == 0 and not board.get_attack_targets(self)) # Check within direct rane
-            or (self.unitType.minRange != 0 and not board.get_attack_targets(self, defender))): # Check within indir range
+        if ((attacker.unitType.minRange == 0 and not board.get_attack_targets(attacker)) # Check within direct rane
+            or (attacker.unitType.minRange != 0 and not board.get_attack_targets(attacker, defender))): # Check within indir range
             print("Unit out of range!")
             return None
 
-        if self.attackAvailable == True:
-            self.movement = 0
-            self.attackAvailable = False
-            base = self.damageAgainst(defender)
-            defenseBonus = board.getDefenseBonus(defender.x, defender.y)
-            attackBonus = self.getAttackBoost(board)
+        if attacker.attackAvailable == True:
+            attacker.movement = 0
+            attacker.attackAvailable = False
+            base = attacker.damageAgainst(defender)
+            defenseBonus = board.getDefenseBonus(defender, defender.x, defender.y, game)
+            attackBonus = attacker.getAttackBoost(game)
             print(attackBonus)
             damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
             defender.health -= damage
-            self.unitType.ammo -= 1
+            attacker.unitType.ammo -= 1
             if defender.health <= 0:
                 print("Unit destroyed!")
                 board.removeUnit(defender, defender.x, defender.y)
-            elif self.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
-                base = defender.damageAgainst(self)
-                defenseBonus = board.getDefenseBonus(self.x, self.y)
+            elif attacker.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
+                base = defender.damageAgainst(attacker)
+                defenseBonus = board.getDefenseBonus(attacker.x, attacker.y)
                 attackBonus = 100
                 damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
-                self.health -= damage
+                attacker.health -= damage
                 defender.unitType.ammo -= 1
-            if self.health <= 0:
+            if attacker.health <= 0:
                 print("Unit lost attacking!")
-                board.removeUnit(self, self.x, self.y)
-            print(f"Attacker: {self.health}, Defender: {defender.health}")
+                board.removeUnit(attacker, attacker.x, attacker.y)
+            print(f"Attacker: {attacker.health}, Defender: {defender.health}")
             return (damage/100) * defender.unitType.value
         else:
             print("Unit unable to attack!")
