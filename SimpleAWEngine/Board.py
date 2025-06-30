@@ -216,6 +216,12 @@ class Board:
         if not moveFirstTurn:
             unit.movement = 0
             unit.attackAvailable = False
+    
+    def setUnitHP(self, x : int, y : int, amount : int):
+        if (x,y) not in self.units:
+            return
+        self.units[(x,y)].health = amount
+
 
     def removeUnit(self, unit: Unit, x: int, y: int):
         if (x,y) not in self.units:
@@ -482,19 +488,19 @@ class Board:
             case 'TRANSPORT':
                 for unit in myUnits:
                     if unit.unitType.transportsUnits == True and unit.movement != 0: unit.movement += moveAmount 
-            case 'PLAINS': # Literally just Jake. These might not be necessary.
-                for unit in myUnits:
-                    if self.getTerrain(unit.x, unit.y).name == "Plains": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case 'PROPERTIES': # Just for Kindle
-                for unit in myUnits:
-                    terName = self.getTerrain(unit.x, unit.y).name
-                    if terName == "City" or terName == "Base" or terName == "Harbor" or terName == "HQ" or terName == "Airport" or terName == "Com Tower":
-                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-            case 'ROADS': # Just for Koal
-                for unit in myUnits:
-                    terName = self.getTerrain(unit.x, unit.y).name
-                    if terName == "Road" or terName == "Bridge":
-                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            # case 'PLAINS': # Literally just Jake. These might not be necessary.
+            #     for unit in myUnits:
+            #         if self.getTerrain(unit.x, unit.y).name == "Plains": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            # case 'PROPERTIES': # Just for Kindle
+            #     for unit in myUnits:
+            #         terName = self.getTerrain(unit.x, unit.y).name
+            #         if terName == "City" or terName == "Base" or terName == "Harbor" or terName == "HQ" or terName == "Airport" or terName == "Com Tower":
+            #             self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            # case 'ROADS': # Just for Koal
+            #     for unit in myUnits:
+            #         terName = self.getTerrain(unit.x, unit.y).name
+            #         if terName == "Road" or terName == "Bridge":
+            #             self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
             case 'ALL':
                 for unit in myUnits:
                     self.setHelper(attackAmount, moveAmount, defenseAmount, unit)

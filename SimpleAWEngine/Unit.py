@@ -21,7 +21,7 @@ class UnitType:
         self.stealthBurn = stealthBurn
         self.transportsUnits = transportsUnits
         self.transportCapacity = tranCapac
-        self.captureBonus = 0
+        self.captureBonus = 0 
         self.damageTable = DAMAGE_TABLE[unitName] # DAMAGE_TABLE is a dict mapping (attacker, defender) → base damage
 
 unitTypes = {
@@ -65,6 +65,7 @@ class Unit:
         self.attackModifier = 0
         self.defenseModifier = 0
         self.counterModifier = 1
+        self.disabled = 0
         if self.unitType.transportsUnits:
             self.loaded = []
 
@@ -108,11 +109,14 @@ class Unit:
             case "Koal":
                 if tileOn.name in ("Road", "Bridge"): return 10 + 10 * game.getCO(self.owner).powerStage
             case "Lash":
-                return 10 * tileOn.defenseBonus * game.getCO(self.owner).powerStage
+                if game.getCO(self.owner).powerStage == 0:
+                    return 10 * tileOn.defenseBonus
+                elif game.getCO(self.owner).powerStage == 2:
+                    return 10 * tileOn.defenseBonus * 2
 
 
     def getAttackBoost(self, game):
-        return 100 + self.getComBoost(game) + self.attackModifier + self.terrainDependentBoosts(self.x, self.y, game)
+        return 100 + self.getComBoost(game) + self.attackModifier + self.terrainDependentBoosts(self.x, self.y, game) + (10 if game.getCO(game.currentPlayer).powerStage in (1, 2) else 0)
 
     def attack(self, defender, game, minLuck=0, maxLuck=9):
         board = game.board
@@ -135,7 +139,7 @@ class Unit:
             attacker.movement = 0
             attacker.attackAvailable = False
             base = attacker.damageAgainst(defender)
-            defenseBonus = board.getDefenseBonus(defender, defender.x, defender.y, game)
+            defenseBonus = board.getDefenseBonus(defender, defender.x, defender.y, game) + (10 if game.getCO(game.currentPlayer).powerStage in (1, 2) else 0)
             attackBonus = attacker.getAttackBoost(game)
             print(attackBonus)
             damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
@@ -146,7 +150,7 @@ class Unit:
                 board.removeUnit(defender, defender.x, defender.y)
             elif attacker.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
                 base = defender.damageAgainst(attacker)
-                defenseBonus = board.getDefenseBonus(attacker.x, attacker.y)
+                defenseBonus = board.getDefenseBonus(attacker.x, attacker.y) + (10 if game.getCO(game.currentPlayer).powerStage in (1, 2) else 0)
                 attackBonus = 100
                 damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
                 attacker.health -= damage
@@ -160,9 +164,10 @@ class Unit:
             print("Unit unable to attack!")
         
 
-    def wait(self):
+    def disable(self):
         self.movement = 0
         self.attackAvailable = False
+        self.disabled = True
 
     def resupply(self, game, healthToHeal=0):
         self.unitType.ammo = self.unitType.ammoMax

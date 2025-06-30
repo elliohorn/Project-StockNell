@@ -33,7 +33,10 @@ class Game:
         income = 0
         for (x,y), b in self.board.buildings.items():
             if b.owner == self.currentPlayer and b.name in ("City","Base","Aiport","Harbor","HQ"):
-                income += 1000 
+                if self.getCO(self.currentPlayer).name == "Sasha":
+                    income += 1100 
+                else:
+                    income += 1000
         self.funds[self.currentPlayer] += income
 
     def setWeather(self, weather):
@@ -50,14 +53,20 @@ class Game:
                   if u.owner == self.currentPlayer]
         
         for unit in myUnits:
-            if self.getCO(self.currentPlayer) == "Rachel":
+            if self.getCO(self.currentPlayer).name == "Rachel":
                 self.resupplyCheck(unit, modifier = 1)
             else:
                 self.resupplyCheck(unit)
             if unit.unitType.stealthable and unit.unitType.isStealthed:
-                unit.unitType.fuel -= unit.unitType.stealthBurn
+                if self.getCO(self.currentPlayer).name == "Eagle":
+                    unit.unitType.fuel -= unit.unitType.stealthBurn + 2
+                else:
+                    unit.unitType.fuel -= unit.unitType.stealthBurn
             elif unit.unitType.fuelBurn != 0:
-                unit.unitType.fuel -= unit.unitType.fuelBurn
+                if self.getCO(self.currentPlayer).name == "Eagle":
+                    unit.unitType.fuel -= unit.unitType.fuelBurn + 2
+                else:
+                    unit.unitType.fuel -= unit.unitType.fuelBurn
         
         # Track which units have been explicitly "ended"
         done = set()
@@ -234,6 +243,8 @@ class Game:
             if unit.owner == self.currentPlayer:
                 unit.movement = unit.unitType.maxMovement
                 unit.attackAvailable = True
+                if unit.disabled: unit.disabled = False
+            
 
         ## FOG UPDATE GOES HERE WHEN IMPLEMENTED
         # self.board.updateVisibility(self.currentPlayer)
