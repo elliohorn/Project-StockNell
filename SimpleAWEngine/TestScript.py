@@ -28,19 +28,11 @@ game.playTurn(1)
 print(board)
 
 #### THINGS TO TEST (TODO):
-# 1. Transport loading, unloading, autoresupplying DONE
-# 2. Resupply, both manual and automatic (including black boat healing) DONE
-# 3. Presence of the boosting bug DONE
-# 4. Fuel consumption is handled properly DONE
-# 5. Test daily fuel burn DONE
+# 1. Test CO behavior
+# 2. Test weather effects
 
 #### THINGS LEFT TO IMPLEMENT:
-# 1. Define all the COs (this may take a while) and test behavior
-# 2. Modify the random input to include all the cases that Manual has
-# 3. Allow for attack modifiers (this will come with CO implementation)
-# 4. Healing needs to drain funds DONE
-# 5. Weather effects
-# 6. Terrain based attackers need to be checked at the time of attack, not the start of the turn DONE
+# 1. Modify the random input to include all the cases that Manual has
 
 
 

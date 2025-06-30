@@ -28,6 +28,7 @@ class CO:
         self.scopKey = scopKey
         self.luckUpperBound = 9
         self.luckLowerBound = 0
+
     def gainMeter(self, gain):
         self.coMeter = self.coMeter + gain
         self.coStars = self.coMeter / 5000
@@ -36,17 +37,37 @@ class CO:
             if self.copStars > self.scopStars:
                 print("SCOP Available")
     
+    def copAvailable(self):
+        return self.coStars > self.copStars
+    
+    def scopAvailable(self):
+        return self.coStars > self.scopStars
+
     def activate_co(self, game):
         if self.coStars > self.copStars:
             self.co_meter -= self.copStars * 5000
             self.powerStage = 1
-            self.coPower(game)
-    
+            if self.copKey is not None:
+                self.basicPower(POWERS_LOOKUP.get(self.copKey), game)
+            else:
+                self.coPower(game)
+
     def activate_super(self, game):
         if self.coStars > self.scopStars:
             self.co_meter = 0
             self.powerStage = 2
-            self.superPower(game.board)
+            if self.copKey is not None:
+                self.basicPower(POWERS_LOOKUP.get(self.scopKey), game)
+            else:
+                self.superPower(game)
+    
+    def resetPowers(self, game):
+        self.co_meter = 0
+        self.coStars = 0
+        if self.d2dKey is not None:
+            self.basicPower(POWERS_LOOKUP.get(self.d2dKey), game)
+        else:
+            self.d2d(game)
 
     def parsePowers():
         powers = {}
@@ -59,7 +80,6 @@ class CO:
         POWERS_LOOKUP = powers
         return powers
     
-    @classmethod
     def basicPower(self, values, game):
         board = game.board
         indivValues = re.split(r',\s*(?![^()]*\))', values)
@@ -115,32 +135,27 @@ class CO:
                 if terrain.name == "City" and terrain.owner == self.player:
                     terrain.unitType.produces = True
 
-    @classmethod
     def goldRush(self, game):
         game.funds[self.player] *= 1.5
 
-    @classmethod
     def powerOfMoney(self, game):
         firepowerBoost = -10 + (3 * (game.funds[self.player]/1000))
         colin = POWERS_LOOKUP.get("colin")
         colin[3] = f"{firepowerBoost},0,0,'ALL')" # Modify the data line to change the firepower boost
         self.basicPower(colin, game.board)
     
-    @classmethod
     def marketCrash(self, game):
         powerCrashPercent = (10 * (game.funds(self.player) / 5000))/100
         p2 = game.player2CO
         if powerCrashPercent > 1: powerCrashPercent = 1
         p2.gainMeter(-1 * (1-powerCrashPercent) * (p2.scopStars * 5000))
     
-    @classmethod
     def tsunami(self, game):
         self.basicPower(POWERS_LOOKUP.get("tsunami"))
         enemyUnits = [u for u in game.board.units.values()
                     if u.owner != self.player]
         for unit in enemyUnits: unit.unitType.fuel = 0.50 * unit.unitType.fuel
     
-    @classmethod
     def typhoon(self, game):
         self.basicPower(POWERS_LOOKUP.get("typhoon"))
         enemyUnits = [u for u in game.board.units.values()
@@ -148,16 +163,13 @@ class CO:
         for unit in enemyUnits: unit.unitType.fuel = 0.50 * unit.unitType.fuel
         game.setWeather("RAIN")
 
-    @classmethod
     def blizzard(self, game):
         game.setWeather("SNOW")
     
-    @classmethod
     def winterFury(self, game):
         self.basicPower(POWERS_LOOKUP.get("winterFury"))
         game.setWeather("SNOW")
 
-    @classmethod
     def lightningStrike(self, game):
         self.basicPower(POWERS_LOOKUP.get("lightningDrive"))
         myUnits = [u for u in game.board.units.values()
@@ -166,21 +178,18 @@ class CO:
             unit.movement = unit.unitType.maxMovement
             unit.attackAvailable = True
     
-    @classmethod
     def turboCharge(self, game):
         self.basicPower(POWERS_LOOKUP.get("turboCharge"))
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits: unit.resupply(game)
     
-    @classmethod
     def overdrive(self, game):
         self.basicPower(POWERS_LOOKUP.get("overdrive"))
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits: unit.resupply(game)
     
-    @classmethod
     def javierAndPowers(self, game):
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
@@ -218,14 +227,12 @@ class CO:
                     if u.owner == self.player]
         for unit in myUnits: unit.unitType.vision = unit.unitType.baseVision + 1
     
-    @classmethod
     def enhancedVision(self, game):
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits: unit.unitType.vision = unit.unitType.baseVision + 2
         # SEE INTO HIDING PLACES SHOULD BE ADDED WHEN FOG IS WANTED
     
-    @classmethod
     def urbanBlight(self, game):
         enemyUnits = [u for u in game.board.units.values()
                     if u.owner != self.player
@@ -236,7 +243,6 @@ class CO:
             else:
                 unit.health = 1 
     
-    @classmethod
     def highSociety(self, game):
         for (x,y), b in game.board.buildings.items():
             if b.owner == game.currentPlayer and b.name in ("City","Base","Aiport","Harbor","HQ"):
@@ -244,7 +250,6 @@ class CO:
         powerList = ['','','',f"({firepowerBonus},0,0,'ALL')",'']
         self.basicPower(powerList, game.board)
 
-    @classmethod
     def perfectMovement(self, game):
         if game.weather != "SNOW":
             game.board.flatMoveCost = True
@@ -258,7 +263,6 @@ class CO:
             game.board.flatMoveCost = True
         self.basicPower(POWERS_LOOKUP["sturm"], game)
 
-    @classmethod
     def missilePowers(self, game):
         match self.name:
             case "Rachel":

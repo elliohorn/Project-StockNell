@@ -23,6 +23,7 @@ class Game:
         self.player1CO = player1CO
         self.player2CO = player2CO
         self.weather = "CLEAR"
+        self.weatherTimer
 
     def getCO(self, player):
         if player == 1: return self.player1CO
@@ -41,8 +42,74 @@ class Game:
 
     def setWeather(self, weather):
         self.weather = weather
+        self.weatherTimer = 2
+
+    def weatherEffects(self):
+        if self.weather == "RAIN" and self.getCO(self.currentPlayer).name != "Drake" and self.getCO(self.currentPlayer).name != "Olaf":
+            for y in range(self.board.height):
+                for x in range(self.board.width):
+                    terrain = self.board.getTerrain(x, y)
+                    if terrain.name == "Forest" or terrain.name == "Plains":
+                        terrain.treadMoveCost += 1
+                        terrain.tireMoveCost += 1
+        if (self.weather == "SNOW" and self.getCO(self.currentPlayer).name != "Olaf") or ((self.weather == "RAIN" and self.getCO(self.currentPlayer).name == "Olaf")):
+            for y in range(self.board.height):
+                for x in range(self.board.width):
+                    terrain = self.board.getTerrain(x, y)
+                    match terrain.name:
+                        case "Plains":
+                            terrain.infMoveCost *= 2
+                            terrain.treadMoveCost += 1
+                            terrain.tireMoveCost += 1
+                        case "Forest":
+                            terrain.infMoveCost *= 2
+                        case "Mountain":
+                            terrain.infMoveCost *= 2
+                            terrain.mecMoveCost *= 2
+                        case "Sea":
+                            terrain.seaMoveCost *= 2
+                            terrain.landerMoveCost *= 2
+                        case "Harbor":
+                            terrain.seaMoveCost *= 2
+                            terrain.landerMoveCost *= 2
+                    terrain.airMoveCost *= 2
+        
+    def resetWeather(self):
+        if self.weather == "RAIN" and self.getCO(self.currentPlayer).name != "Drake" and self.getCO(self.currentPlayer).name != "Olaf":
+            for y in range(self.board.height):
+                for x in range(self.board.width):
+                    terrain = self.board.getTerrain(x, y)
+                    if terrain.name == "Forest" or terrain.name == "Plains":
+                        terrain.treadMoveCost -= 1
+                        terrain.tireMoveCost -= 1
+        if (self.weather == "SNOW" and self.getCO(self.currentPlayer).name != "Olaf") or ((self.weather == "RAIN" and self.getCO(self.currentPlayer).name == "Olaf")):
+            for y in range(self.board.height):
+                for x in range(self.board.width):
+                    terrain = self.board.getTerrain(x, y)
+                    match terrain.name:
+                        case "Plains":
+                            terrain.infMoveCost *= 0.5
+                            terrain.treadMoveCost -= 1
+                            terrain.tireMoveCost -= 1
+                        case "Forest":
+                            terrain.infMoveCost *= 0.5
+                        case "Mountain":
+                            terrain.infMoveCost *= 0.5
+                            terrain.mecMoveCost *= 0.5
+                        case "Sea":
+                            terrain.seaMoveCost *= 0.5
+                            terrain.landerMoveCost *= 0.5
+                        case "Harbor":
+                            terrain.seaMoveCost *= 0.5
+                            terrain.landerMoveCost *= 0.5
+                    terrain.airMoveCost *= 0.5
+
 
     def playTurn(self, inputType=0, FOW=False):
+        if self.weather != "CLEAR":
+            self.weatherEffects()
+        if self.getCO(self.currentPlayer).powerStage != 0:
+            self.getCO(self.currentPlayer).resetPowers(self)
         # Build an initial queue of your units
         actionQueue = deque(
             u for u in self.board.units.values()
@@ -53,6 +120,14 @@ class Game:
                   if u.owner == self.currentPlayer]
         
         for unit in myUnits:
+            if self.getCO(self.currentPlayer).copAvailable():
+                choice = input("Activate COP? y/n: ")
+                if choice == "y": self.getCO(self.currentPlayer).activate_co(self) 
+            
+            if self.getCO(self.currentPlayer).scopAvailable():
+                choice = input("Activate SCOP? y/n: ")
+                if choice == "y": self.getCO(self.currentPlayer).activate_super(self) 
+
             if self.getCO(self.currentPlayer).name == "Rachel":
                 self.resupplyCheck(unit, modifier = 1)
             else:
@@ -177,6 +252,10 @@ class Game:
         # After exhausting the queue, do your end_of_turn(), switch player, etc.
         self.productionStep(inputType)
         self.endTurn()
+        if self.weatherTimer != 0: 
+            self.weatherTimer -= 1
+            if self.weatherTimer == 0:
+                self.resetWeather()
         self.currentPlayer *= -1
 
     def productionStep(self, inputType):

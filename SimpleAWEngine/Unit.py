@@ -136,25 +136,40 @@ class Unit:
             return None
 
         if attacker.attackAvailable == True:
+
             attacker.movement = 0
             attacker.attackAvailable = False
             base = attacker.damageAgainst(defender)
             defenseBonus = board.getDefenseBonus(defender, defender.x, defender.y, game) + (10 if game.getCO(game.currentPlayer).powerStage in (1, 2) else 0)
             attackBonus = attacker.getAttackBoost(game)
-            print(attackBonus)
             damage = int((base * (attackBonus/100) * (defender.health/100) + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
             defender.health -= damage
             attacker.unitType.ammo -= 1
+            
+            defenderValueLost = (damage/100) * defender.unitType.value
+            attackerValueDamaged = defenderValueLost * 0.5
+            defender.unitType.value -= defenderValueLost
+            if game.getCO(defender.owner).powerStage == 0: game.getCO(defender.owner).gainMeter(defenderValueLost)
+            if game.getCO(attacker.owner).powerStage == 0: game.getCO(attacker.owner).gainMeter(attackerValueDamaged)
+
             if defender.health <= 0:
                 print("Unit destroyed!")
                 board.removeUnit(defender, defender.x, defender.y)
             elif attacker.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
+
                 base = defender.damageAgainst(attacker)
                 defenseBonus = board.getDefenseBonus(attacker.x, attacker.y) + (10 if game.getCO(game.currentPlayer).powerStage in (1, 2) else 0)
                 attackBonus = 100
                 damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
                 attacker.health -= damage
                 defender.unitType.ammo -= 1
+
+                attackerValueLost = (damage/100) * attacker.unitType.value
+                defenderValueDamaged = attackerValueLost * 0.5
+                attacker.unitType.value -= attackerValueLost
+                if game.getCO(attacker.owner).powerStage == 0: game.getCO(attacker.owner).gainMeter(attackerValueLost)
+                if game.getCO(defender.owner).powerStage == 0: game.getCO(defender.owner).gainMeter(defenderValueDamaged)
+
             if attacker.health <= 0:
                 print("Unit lost attacking!")
                 board.removeUnit(attacker, attacker.x, attacker.y)

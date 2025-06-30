@@ -5,7 +5,7 @@ from collections import deque
 from SimpleAWEngine.Game import Game
 from SimpleAWEngine.Unit import UnitType, Unit, unitTypes
 from SimpleAWEngine.Board import Board, terrain_types
-from SimpleAWEngine.CO import CO
+from SimpleAWEngine.CO import CO, COs
 
 # --- Dummy classes to isolate playTurn logic ---
 
@@ -229,6 +229,29 @@ def test_unload_places_and_boosts(transport_and_unit):
     # and soldier removed from transport.loaded
     assert soldier not in transport.loaded
     assert soldier2 not in transport.loaded
+
+# COs Confirmed to be functioning correctly:
+#
+
+# COs Confirmed to have errors:
+# 
+
+def testCOs(monkeypatch):
+    terrain_codes = [[('P',0),('P',0)], [('P',0),('P',0)], [('P',0),('P',0)], [('P',0),('P',0)], [('P',0),('P',0)]]
+    startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+                     (Unit(1,unitTypes.get('INF')), 1, 0),
+                     (Unit(1,unitTypes.get('INF')), 0, 2), 
+                     (Unit(1,unitTypes.get('INF')), 1, 2),
+                     (Unit(1,unitTypes.get('TNK')), 0, 4),
+                     (Unit(-1,unitTypes.get('TNK')), 1, 4)]
+    game = Game(terrain_codes, terrain_types, player1CO=COs.get("Sami"), player2CO=COs.get("Max"), startingUnits=startingUnits)
+    game.getCO(1).gainMeter(50000)
+    game.getCO(-1).gainMeter(50000)
+    inputs = iter(['n', 'n', 'attack', 0, # Unit 1 attacks, no COP/SCOP
+                    'y', 'attack', 0, # Unit 3 attacks with COP
+                    'end', 'stealth', 'end', 'end', 'end', 'end'])
+    monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
+    
 
 def test_parsing():
     max = CO("Max", 3, 6, None, None, None, player=1)
