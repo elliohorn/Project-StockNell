@@ -1,8 +1,9 @@
-from SimpleAWEngine.Board import Board
-from SimpleAWEngine.Unit import Unit, unitTypes
-from SimpleAWEngine.CO import CO#, COs
-# from Board import Board
-# from Unit import Unit
+# from SimpleAWEngine.Board import Board
+# from SimpleAWEngine.Unit import Unit, unitTypes
+# from SimpleAWEngine.CO import CO, COs, POWERS_LOOKUP
+from Board import Board
+from Unit import Unit, unitTypes
+from CO import CO
 import random
 from collections import deque
 
@@ -23,7 +24,13 @@ class Game:
         self.player1CO = player1CO
         self.player2CO = player2CO
         self.weather = "CLEAR"
-        self.weatherTimer
+        self.weatherTimer = 0
+        CO.parsePowers()
+        player1CO.player = 1
+        player2CO.player = -1
+        player1CO.resetPowers(self)
+        player2CO.resetPowers(self)
+
 
     def getCO(self, player):
         if player == 1: return self.player1CO
@@ -120,14 +127,6 @@ class Game:
                   if u.owner == self.currentPlayer]
         
         for unit in myUnits:
-            if self.getCO(self.currentPlayer).copAvailable():
-                choice = input("Activate COP? y/n: ")
-                if choice == "y": self.getCO(self.currentPlayer).activate_co(self) 
-            
-            if self.getCO(self.currentPlayer).scopAvailable():
-                choice = input("Activate SCOP? y/n: ")
-                if choice == "y": self.getCO(self.currentPlayer).activate_super(self) 
-
             if self.getCO(self.currentPlayer).name == "Rachel":
                 self.resupplyCheck(unit, modifier = 1)
             else:
@@ -148,6 +147,15 @@ class Game:
 
         while actionQueue:
             unit = actionQueue.popleft()
+            if self.getCO(self.currentPlayer).copAvailable() and self.getCO(self.currentPlayer).powerStage == 0:
+                choice = input("Activate COP? y/n: ")
+                if choice == "y": 
+                    self.getCO(self.currentPlayer).activate_co(self) 
+            
+            if self.getCO(self.currentPlayer).scopAvailable() and self.getCO(self.currentPlayer).powerStage == 0:
+                choice = input("Activate SCOP? y/n: ")
+                if choice == "y": 
+                    self.getCO(self.currentPlayer).activate_super(self) 
 
             # if unit was marked done, skip it
             if unit in done:
@@ -155,17 +163,19 @@ class Game:
 
             # Show options, etc… like in your manual‐input branch
             moves, costs = self.board.get_legal_moves(unit)
-            print(self.board.render(self.currentPlayer))
+            #print(self.board.render(self.currentPlayer))
             print(f"Unit: {unit} MP={unit.movement} Fuel={unit.unitType.fuel}")
             for i, dest in enumerate(moves):
                 print(f"{i}: → {dest} (cost {costs[dest]})")
             print(f"Actions: move, load, unload, capture, attack, stealth={unit.unitType.stealthable}, end")
             action = input("Action? ").strip().lower()
-
+            print(action)
             match action:
                 case "move":
-                    idx = int(input("Move index: "))
-                    dest = moves[idx]
+                    idx = input("Provide move index. \"wait\" To wait in place: ")
+                    print(idx != 'wait')
+                    if idx != 'wait': dest = moves[int(idx)]
+                    else: dest = (unit.x, unit.y)
                     self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
                     actionQueue.appendleft(unit)
 
@@ -198,7 +208,7 @@ class Game:
 
                 case "capture":
                     if self.board.captureTargets(unit):
-                        self.board.capture(unit)
+                        unit.capture(self.board)
                     else:
                         print("Cannot capture here.")
 
@@ -208,11 +218,11 @@ class Game:
                         print(f"{i}: {e}")
                     idx = int(input("Enemy index: "))
                     if self.getCO(self.currentPlayer) == "Sasha" and self.getCO(self.currentPlayer).powerStage == 2:
-                        fundsToAdd = self.board.attack(unit, enemies[idx], self.board)
+                        fundsToAdd = unit.attack(enemies[idx], self, self.getCO(unit.owner).luckLowerBound, self.getCO(unit.owner).luckUpperBound)
                         if fundsToAdd is not None:
                             self.funds[self.currentPlayer] += 0.50 * fundsToAdd
                     else:
-                        self.board.attack(unit, enemies[idx], self.board)
+                        unit.attack(enemies[idx], self, self.getCO(unit.owner).luckLowerBound, self.getCO(unit.owner).luckUpperBound)
 
                 case "stealth":
                     if unit.unitType.stealthable:

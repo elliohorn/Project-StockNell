@@ -3,6 +3,7 @@ hyperRepair,,3,,,
 hyperUpgrade,,5,,"(10,1,0,'ALL')",
 hachi,,,,,0.90
 barter,,,,,0.50
+jakeReset,,,,"(0,0,0,'INDIRECT',0)",
 beatDown,,,,"(0,0,0,'INDIRECT',1)",
 blockRock,,,2,"(0,0,0,'INDIRECT',1)",
 max,,,,"(20,0,0,'DIRECT');(-10,0,0,'INDIRECT')",

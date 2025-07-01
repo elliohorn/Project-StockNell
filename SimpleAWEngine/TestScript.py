@@ -1,27 +1,39 @@
 from Unit import Unit, unitTypes
 from Game import Game
 from Board import Board, TerrainType, terrain_codes, terrain_types
+from CO import COs
 
 # minimal terrain_types & map
 
 #board = Board(terrain_codes, terrain_types, False)
 # create two units
-startingUnits = [
-    (Unit(1,unitTypes.get('APC')), 0, 3),# 'INF', 1, 3, 2, 100, 99, 1000)
-    (Unit(-1,unitTypes.get('TNK')), 2, 2),#, 'TREAD', -1, 6, 3, 100, 9, 7000)
-    (Unit(1,unitTypes.get('MEC')), 0, 0),# 'MEC', 1, 2, 2, 100, 99, 3000)
-]#     (Unit(1,unitTypes.get('MEC')), 6, 6),# 'MEC', 1, 2, 2, 100, 99, 3000)
-    #(Unit(-1,unitTypes.get('MEC')), 6, 7)]# 'MEC', 1, 2, 2, 100, 99, 3000)
-#     (Unit(1,unitTypes.get('MEC')), 7, 6),# 'MEC', 1, 2, 2, 100, 99, 3000)
-#     (Unit(1,unitTypes.get('MEC')), 7, 7),# 'MEC', 1, 2, 2, 100, 99, 3000)
-#     (Unit(1,unitTypes.get('MEC')), 4, 4)# 'MEC', 1, 2, 2, 100, 99, 3000)
-# ]
-
-game = Game(terrain_codes, terrain_types, startingUnits)
+terrain_codes = [[('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+                     [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+                     [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+                     [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+                     [('P',0),('P',0),('P',0),('P',0),('C',0), ('P',0), ('P',0), ('P',0)]]
+startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+                     (Unit(-1,unitTypes.get('INF')), 1, 0),
+                     (Unit(1,unitTypes.get('INF')), 3, 0), 
+                     (Unit(-1,unitTypes.get('INF')), 4, 0),
+                     (Unit(1,unitTypes.get('INF')), 6, 0), 
+                     (Unit(-1,unitTypes.get('INF')), 7, 0),
+                     (Unit(1,unitTypes.get('TNK')), 0, 2),
+                     (Unit(-1,unitTypes.get('TNK')), 1, 2),
+                     (Unit(1,unitTypes.get('TNK')), 3, 2),
+                     (Unit(-1,unitTypes.get('TNK')), 4, 2),
+                     (Unit(1,unitTypes.get('TNK')), 6, 2),
+                     (Unit(-1,unitTypes.get('TNK')), 7, 2),
+                     (Unit(1,unitTypes.get('TNK')), 7, 3),
+                     (Unit(-1,unitTypes.get('INF')), 7, 4)]
+game = Game(terrain_codes, terrain_types, player1CO=COs.get("Max"), player2CO=COs.get("Max"), startingUnits=startingUnits)
+game.getCO(1).gainMeter(200000)
+game.getCO(-1).gainMeter(200000)
 board = game.board
 
 print(board)
 
+game.playTurn(1)
 game.playTurn(1)
 game.playTurn(1)
 

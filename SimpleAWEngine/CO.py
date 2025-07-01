@@ -1,5 +1,7 @@
-from SimpleAWEngine.Board import Board
-from SimpleAWEngine.Unit import unitTypes
+# from SimpleAWEngine.Board import Board
+# from SimpleAWEngine.Unit import unitTypes
+from Board import Board
+from Unit import unitTypes
 import csv
 import re
 import heapq
@@ -45,28 +47,33 @@ class CO:
 
     def activate_co(self, game):
         if self.coStars > self.copStars:
-            self.co_meter -= self.copStars * 5000
+            self.coMeter -= self.copStars * 5000
             self.powerStage = 1
             if self.copKey is not None:
                 self.basicPower(POWERS_LOOKUP.get(self.copKey), game)
-            else:
+            elif self.coPower is not None:
                 self.coPower(game)
 
     def activate_super(self, game):
         if self.coStars > self.scopStars:
-            self.co_meter = 0
+            self.coMeter = 0
             self.powerStage = 2
             if self.copKey is not None:
                 self.basicPower(POWERS_LOOKUP.get(self.scopKey), game)
-            else:
+            elif self.superPower is not None:
                 self.superPower(game)
     
     def resetPowers(self, game):
-        self.co_meter = 0
+        self.coMeter = 0
         self.coStars = 0
+        if self.name == "Jake" and self.powerStage != 0: # God damn special little boy.
+            self.basicPower(POWERS_LOOKUP.get("jakeReset"), game)
+        self.powerStage = 0
+    
+
         if self.d2dKey is not None:
             self.basicPower(POWERS_LOOKUP.get(self.d2dKey), game)
-        else:
+        elif self.d2d is not None:
             self.d2d(game)
 
     def parsePowers():
@@ -76,11 +83,12 @@ class CO:
             header = next(reader)
             for row in reader:
                 powers[row[0]] = f"{row[1]}, {row[2]}, {row[3]}, {row[4]}, {row[5]}"
-        #print(powers.get("jake"))
-        POWERS_LOOKUP = powers
+        POWERS_LOOKUP.clear()
+        POWERS_LOOKUP.update(powers)
         return powers
     
     def basicPower(self, values, game):
+        #print(f"PL: {POWERS_LOOKUP}")
         board = game.board
         indivValues = re.split(r',\s*(?![^()]*\))', values)
         luckModifier = indivValues[0]
@@ -88,7 +96,7 @@ class CO:
         globalMoveChange = indivValues[2]
         unitModifiers = indivValues[3]
         modifierTuples = []
-        print(indivValues)
+        #print(indivValues)
         if ";" in unitModifiers:
             for modifier in unitModifiers.split(";"):
                 modifierTuples.append(tuple(modifier.split(",")))
@@ -338,10 +346,10 @@ bp = CO.basicPower
 COs = {
     "Andy": CO("Andy", 3, 6, None, None, bp, "hyperRepair", bp, "hyperUpgrade"),
     "Hachi": CO("Hachi", 3, 5, bp, "hachi", bp, "barter", CO.merchantUnion, None),
-    "Jake": CO("Jake", 3, 6, bp, "jake", bp, "beatDown", bp, "blockRock"),
+    "Jake": CO("Jake", 3, 6, None, None, bp, "beatDown", bp, "blockRock"),
     "Max": CO("Max", 3, 6, bp, "max", bp, "maxForce", bp, "maxBlast"),
     "Nell": CO("Nell", 3, 6, bp, "nell", bp, "luckyStar", bp, "ladyLuck"),
-    "Rachel": CO("Rachel", 3, 6, None, None, bp, "luckyLass", CO.missilePowers),
+    "Rachel": CO("Rachel", 3, 6, None, None, bp, "luckyLass", CO.missilePowers, None),
     "Sami": CO("Sami", 3, 8, bp, "sami", bp, "doubleTime", bp, "victoryMarch"),
     "Colin": CO("Colin", 2, 6, bp, "colin", CO.goldRush, None, CO.powerOfMoney, None),
     "Grit": CO("Grit", 3, 6, bp, "grit", bp, "snipeAttack", bp, "superSnipe"),

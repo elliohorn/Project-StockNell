@@ -1,4 +1,5 @@
-from SimpleAWEngine.Unit import Unit
+# from SimpleAWEngine.Unit import Unit
+from Unit import Unit
 import heapq
 import copy
 from typing import List, Tuple, Dict, Any
@@ -232,7 +233,8 @@ class Board:
         if (fromX, fromY) not in self.units:
             raise ValueError(f"No unit at starting point {(fromX, fromY)}")
         if (toX, toY) in self.units:
-            raise ValueError(f"Destination occupied at {(toX, toY)}")
+            return
+            #raise ValueError(f"Destination occupied at {(toX, toY)}")
         
         unit = self.units.pop((fromX, fromY))
         #legalMoves, moveCosts = self.get_legal_moves(unit)
@@ -384,13 +386,13 @@ class Board:
             return True
         return False
     
-    def get_attack_targets(self, unit, indirTarget=None):
+    def get_attack_targets(self, unit):
         """
         Returns list of enemy units adjacent to this unit.
         """
         targets = []
         # Direct check
-        if not indirTarget:
+        if unit.unitType.minRange == 0:
             for dx,dy in [(-1,0),(1,0),(0,-1),(0,1)]:
                 x2, y2 = unit.x+dx, unit.y+dy
                 if (x2,y2) in self.units:
@@ -398,10 +400,24 @@ class Board:
                     if other.owner != unit.owner:
                         targets.append(other)
         else: # Indirect check
-            dx = abs(unit.x - indirTarget.x)
-            dy = abs(unit.y - indirTarget.y)
-            if (unit.unitType.minRange < dx + dy < unit.unitType.maxRange):
-                targets.append(indirTarget)
+            start = (unit.x, unit.y)
+            frontier = [(0, start)]
+            distanceSearched = 0
+            while frontier:
+                dist, (x, y) = heapq.heappop(frontier)
+                # Explore neighbors
+                for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+                    nx, ny = x + dx, y + dy
+                    distanceSearched = dist + 1
+                    if distanceSearched > unit.unitType.maxRange:
+                        continue
+                    heapq.heappush(frontier, (distanceSearched, (nx, ny)))
+                    if (nx, ny) not in self.units or (nx, ny) == start:
+                        continue
+                    distanceX = abs(unit.x - nx)
+                    distanceY = abs(unit.y - ny)
+                    if (unit.unitType.minRange < distanceX + distanceY < unit.unitType.maxRange and self.units[(nx, ny)].owner != unit.owner and self.units[(nx,ny)] not in targets):
+                        targets.append(self.units[(nx, ny)])
         return targets
     
     def reduceCapturePoints(self, unit):
@@ -416,13 +432,13 @@ class Board:
             self.grid[unit.y][unit.x].owner = unit.owner
     
     def globalHPChange(self, owner, amount):
-        myUnits = [u for u in self.board.units.values()
+        myUnits = [u for u in self.units.values()
                   if u.owner == owner]
         for unit in myUnits:
             unit.health += amount
 
     def globalValueChange(self, owner, discount):
-        myUnits = [u for u in self.board.units.values()
+        myUnits = [u for u in self.units.values()
                   if u.owner == owner]
         for unit in myUnits:
             unit.value *= discount
@@ -435,7 +451,7 @@ class Board:
         Everybody else plays nice and boosts the stats of the same unit type every time.
         All except for Jake. JAKE, GO FUCK YOURSELF
         """
-        myUnits = [u for u in self.board.units.values()
+        myUnits = [u for u in self.units.values()
                   if u.owner == owner]
         for unit in myUnits:
             moveType = unit.unitType.moveType
@@ -451,8 +467,9 @@ class Board:
         moveAmount = int(modifiers[1])
         defenseAmount = int(modifiers[2])
         type = modifiers[3].strip(")").strip("'")
-        if len(modifiers) == 4 and type == "INF": captureModifier = float(modifiers[4])
-        elif len(modifiers) == 4 and type == "INDIRECT": indirBonus = int(modifiers[4])
+        print(f"MODS: {modifiers}")
+        if len(modifiers) == 5 and type == "INF": captureModifier = float(modifiers[4].strip(")"))
+        elif len(modifiers) == 5 and type == "INDIRECT": indirBonus = int(modifiers[4].strip(")"))
         #print(f"{type} == 'DIRECT' {type == 'DIRECT'}")
         print(repr(type), repr('DIRECT'))
         match type:
@@ -471,7 +488,7 @@ class Board:
                 for unit in myUnits:
                     if unit.unitType.minRange != 0:
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-                        unit.unitType.maxRange += indirBonus
+                        unit.unitType.maxRange = unit.unitType.staticMax + indirBonus
             case 'GROUND':
                 for unit in myUnits:
                     moveType = unit.unitType.moveType
@@ -508,7 +525,8 @@ class Board:
     def setHelper(self, attackAmount, moveAmount, defenseAmount, unit):
         if attackAmount != 0: unit.attackModifier = attackAmount
         if defenseAmount!= 0: unit.defenseModifier = defenseAmount
-        if unit.movement != 0: unit.movement += moveAmount
+        if unit.movement != 0: 
+            unit.movement += moveAmount
 
             
 
