@@ -2,6 +2,7 @@
 from DamageTable import DAMAGE_TABLE
 
 import random
+import copy
 
 class UnitType:
     def __init__(self, unitName, moveType, movement, vision, fuel, ammo, value, rangeMin, rangeMax, fuelBurn, transportsUnits=False, stealthable=False, stealthBurn=0, tranCapac=0):
@@ -61,7 +62,7 @@ class Unit:
         self.health       = 100       # current HP
         self.maxHealth   = 100
         self.x, self.y = x,y
-        self.unitType = unitType
+        self.unitType = copy.deepcopy(unitType)
         self.movement = self.unitType.maxMovement        # movement points per turn
         self.attackAvailable = True
         self.turnOver = False
@@ -83,7 +84,7 @@ class Unit:
         board.reduceCapturePoints(self)
 
     def getComBoost(self, game):
-        if (game.getCO(self.owner) == "Javier"):
+        if (game.getCO(self.owner).name == "Javier" and game.getCO(self.owner).powerStage != 0):
             if game.getCO(self.owner).powerStage == 1:
                 return 2 * 10 * sum(1 for b in game.board.buildings.values()
                         if b.owner == self.owner and b.name == "Com Tower")
@@ -165,8 +166,8 @@ class Unit:
             elif attacker.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
 
                 base = defender.damageAgainst(attacker)
-                defenseBonus = board.getDefenseBonus(attacker, attacker.x, attacker.y, game) + (10 if game.getCO(attacker.owner).powerStage in (1, 2) else 0)
-                attackBonus = 100
+                defenseBonus = board.getDefenseBonus(attacker, attacker.x, attacker.y, game) + (1 if game.getCO(defender.owner).powerStage in (1, 2) else 0)
+                attackBonus = defender.getAttackBoost(game)
                 #damage = int(((base * attackBonus * defender.counterModifier)/100 + random.randint(minLuck, maxLuck)) * defender.health/100  *  (200 - (attacker.defenseModifier + (10 * defenseBonus) * (attacker.health/10)))/100)
                 damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + attacker.defenseModifier))/100))
                 attacker.health -= damage
@@ -182,7 +183,7 @@ class Unit:
                 print("Unit lost attacking!")
                 board.removeUnit(attacker, attacker.x, attacker.y)
             print(f"Attacker: {attacker.health}, Defender: {defender.health}")
-            return (damage/100) * defender.unitType.value
+            return attackerValueDamaged
         else:
             print("Unit unable to attack!")
         
@@ -197,9 +198,7 @@ class Unit:
         self.unitType.fuel = self.unitType.fuelMax
         if game.funds[game.currentPlayer] >= (healthToHeal/100) * self.unitType.value:
             self.health += healthToHeal
-            print(game.funds[game.currentPlayer])
             game.funds[game.currentPlayer] -= (healthToHeal/100) * self.unitType.value 
-            print(game.funds[game.currentPlayer])
 
 
     def __repr__(self):

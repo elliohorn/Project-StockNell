@@ -26,10 +26,14 @@ class Game:
         self.weather = "CLEAR"
         self.weatherTimer = 0
         CO.parsePowers()
-        player1CO.player = 1
-        player2CO.player = -1
-        player1CO.resetPowers(self)
-        player2CO.resetPowers(self)
+        if self.player1CO == self.player2CO:
+            print("COs identical, copying")
+            self.player2CO = CO.copyCO(self.player1CO)
+            print(f"Player1: {self.player1CO}, Player2: {self.player2CO}")
+        self.player1CO.setPlayer(1)
+        self.player2CO.setPlayer(-1)
+        self.player1CO.resetPowers(self)
+        self.player2CO.resetPowers(self)
 
 
     def getCO(self, player):
@@ -113,6 +117,7 @@ class Game:
 
 
     def playTurn(self, inputType=0, FOW=False):
+        self.collectIncome()
         if self.weather != "CLEAR":
             self.weatherEffects()
         if self.getCO(self.currentPlayer).powerStage != 0:
@@ -151,11 +156,22 @@ class Game:
                 choice = input("Activate COP? y/n: ")
                 if choice == "y": 
                     self.getCO(self.currentPlayer).activate_co(self) 
+                    if self.getCO(self.currentPlayer).name == "Sensei":
+                        for indivUnit in myUnits:
+                            if indivUnit.unitType.unitName == "INF" and indivUnit.health == 90 and indivUnit not in actionQueue:
+                                actionQueue.append(indivUnit)
             
             if self.getCO(self.currentPlayer).scopAvailable() and self.getCO(self.currentPlayer).powerStage == 0:
                 choice = input("Activate SCOP? y/n: ")
                 if choice == "y": 
-                    self.getCO(self.currentPlayer).activate_super(self) 
+                    self.getCO(self.currentPlayer).activate_super(self)
+                    if self.getCO(self.currentPlayer).name == "Eagle":
+                        for indivUnit in myUnits:
+                            if indivUnit not in actionQueue: actionQueue.append(indivUnit)
+                    elif self.getCO(self.currentPlayer).name == "Sensei":
+                        for indivUnit in myUnits:
+                            if indivUnit.unitType.unitName == "MEC" and indivUnit.health == 90 and indivUnit not in actionQueue:
+                                actionQueue.append(indivUnit)
 
             # if unit was marked done, skip it
             if unit in done:
@@ -217,7 +233,7 @@ class Game:
                     for i, e in enumerate(enemies):
                         print(f"{i}: {e}")
                     idx = int(input("Enemy index: "))
-                    if self.getCO(self.currentPlayer) == "Sasha" and self.getCO(self.currentPlayer).powerStage == 2:
+                    if self.getCO(self.currentPlayer).name == "Sasha" and self.getCO(self.currentPlayer).powerStage == 2:
                         fundsToAdd = unit.attack(enemies[idx], self, self.getCO(unit.owner).luckLowerBound, self.getCO(unit.owner).luckUpperBound)
                         if fundsToAdd is not None:
                             self.funds[self.currentPlayer] += 0.50 * fundsToAdd

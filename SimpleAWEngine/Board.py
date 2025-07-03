@@ -435,13 +435,14 @@ class Board:
         myUnits = [u for u in self.units.values()
                   if u.owner == owner]
         for unit in myUnits:
-            unit.health += amount
+            unit.health += amount * 10
 
     def globalValueChange(self, owner, discount):
         myUnits = [u for u in self.units.values()
                   if u.owner == owner]
         for unit in myUnits:
-            unit.value *= discount
+            unit.unitType.value *= discount
+            unit.unitType.value = int(unit.unitType.value)
 
 
     def globalMovementChange(self, owner, amount):
@@ -459,13 +460,14 @@ class Board:
                 if unit.movement != 0: unit.movement += amount
 
     def globalUnitModifier(self, owner, modifiers):
+        if len(modifiers) == 1: return
         myUnits = [u for u in self.units.values()
                   if u.owner == owner]
-        if len(modifiers) == 0: return
 
         attackAmount = int(modifiers[0].strip("("))
         moveAmount = int(modifiers[1])
         defenseAmount = int(modifiers[2])
+        captureModifier = None
         type = modifiers[3].strip(")").strip("'")
         print(f"MODS: {modifiers}")
         if len(modifiers) == 5 and type == "INF": captureModifier = float(modifiers[4].strip(")"))
@@ -478,7 +480,7 @@ class Board:
                     moveType = unit.unitType.moveType
                     if moveType == "INF" or moveType == "MEC": 
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-                        unit.unitType.captureBonus = captureModifier
+                        if captureModifier is not None: unit.unitType.captureBonus = captureModifier
             case 'DIRECT': # Direct always excludes footsoldiers
                 print(myUnits)
                 for unit in myUnits:
@@ -501,7 +503,7 @@ class Board:
                     if unit.unitType.moveType == "SEA": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
             case 'COPTER':
                 for unit in myUnits:
-                    if unit.unitType.name == "BCP": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+                    if unit.unitType.unitName == "BCP": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
             case 'TRANSPORT':
                 for unit in myUnits:
                     if unit.unitType.transportsUnits == True and unit.movement != 0: unit.movement += moveAmount 

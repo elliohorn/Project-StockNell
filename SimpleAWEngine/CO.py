@@ -1,12 +1,14 @@
 # from SimpleAWEngine.Board import Board
 # from SimpleAWEngine.Unit import unitTypes
 from Board import Board
-from Unit import unitTypes
+from Unit import Unit, unitTypes
 import csv
 import re
 import heapq
 import random
+import string
 from pathlib import Path
+from types import MethodType
 
 HERE = Path(__file__).parent   # directory this .py file lives in
 POWERS_CSV = (HERE / "powers.csv").resolve()
@@ -22,14 +24,24 @@ class CO:
         self.copStars = cop_stars
         self.scopStars = scop_stars
         self.powerStage = 0         # 0=none, 1=CO Power, 2=Super Power
+
         self.d2d = dayToDay
-        self.d2dKey = d2dKey
-        self.coPower = co_power     # function(game) → applies CO Power
+        self.d2dKey = d2dKey # function(game) → applies CO Power
+        self.coPower = co_power
         self.copKey = copKey
         self.superPower = super_power
         self.scopKey = scopKey
+
         self.luckUpperBound = 9
         self.luckLowerBound = 0
+    
+    def copyCO(copiedCO):
+        return CO(copiedCO.name, copiedCO.copStars, copiedCO.scopStars, 
+                  copiedCO.d2d, copiedCO.d2dKey, copiedCO.coPower,
+                  copiedCO.copKey, copiedCO.superPower, copiedCO.scopKey)
+
+    def setPlayer(self, player):
+        self.player = player
 
     def gainMeter(self, gain):
         self.coMeter = self.coMeter + gain
@@ -52,16 +64,16 @@ class CO:
             if self.copKey is not None:
                 self.basicPower(POWERS_LOOKUP.get(self.copKey), game)
             elif self.coPower is not None:
-                self.coPower(game)
+                self.coPower(self, game)
 
     def activate_super(self, game):
         if self.coStars > self.scopStars:
             self.coMeter = 0
             self.powerStage = 2
-            if self.copKey is not None:
+            if self.scopKey is not None:
                 self.basicPower(POWERS_LOOKUP.get(self.scopKey), game)
             elif self.superPower is not None:
-                self.superPower(game)
+                self.superPower(self, game)
     
     def resetPowers(self, game):
         self.coMeter = 0
@@ -69,12 +81,11 @@ class CO:
         if self.name == "Jake" and self.powerStage != 0: # God damn special little boy.
             self.basicPower(POWERS_LOOKUP.get("jakeReset"), game)
         self.powerStage = 0
-    
 
         if self.d2dKey is not None:
             self.basicPower(POWERS_LOOKUP.get(self.d2dKey), game)
         elif self.d2d is not None:
-            self.d2d(game)
+            self.d2d(self, game)
 
     def parsePowers():
         powers = {}
@@ -141,31 +152,32 @@ class CO:
             for x in range(game.board.width):
                 terrain = game.board.getTerrain(x, y)
                 if terrain.name == "City" and terrain.owner == self.player:
-                    terrain.unitType.produces = True
+                    terrain.produces = True
 
     def goldRush(self, game):
         game.funds[self.player] *= 1.5
+        game.funds[self.player] = int(game.funds[self.player])
 
     def powerOfMoney(self, game):
-        firepowerBoost = -10 + (3 * (game.funds[self.player]/1000))
+        firepowerBoost = int(-10 + (3 * (game.funds[self.player]/1000)))
         colin = POWERS_LOOKUP.get("colin")
-        colin[3] = f"{firepowerBoost},0,0,'ALL')" # Modify the data line to change the firepower boost
-        self.basicPower(colin, game.board)
+        modified = colin.replace(colin[6:21], f"({firepowerBoost},0,0,'ALL')") # Modify the data line to change the firepower boost
+        self.basicPower(modified, game)
     
     def marketCrash(self, game):
-        powerCrashPercent = (10 * (game.funds(self.player) / 5000))/100
+        powerCrashPercent = (10 * (game.funds[self.player] / 5000))/100
         p2 = game.player2CO
         if powerCrashPercent > 1: powerCrashPercent = 1
-        p2.gainMeter(-1 * (1-powerCrashPercent) * (p2.scopStars * 5000))
+        p2.gainMeter(-1 * powerCrashPercent * (p2.scopStars * 5000))
     
     def tsunami(self, game):
-        self.basicPower(POWERS_LOOKUP.get("tsunami"))
+        self.basicPower(POWERS_LOOKUP.get("tsunami"), game)
         enemyUnits = [u for u in game.board.units.values()
                     if u.owner != self.player]
         for unit in enemyUnits: unit.unitType.fuel = 0.50 * unit.unitType.fuel
     
     def typhoon(self, game):
-        self.basicPower(POWERS_LOOKUP.get("typhoon"))
+        self.basicPower(POWERS_LOOKUP.get("typhoon"), game)
         enemyUnits = [u for u in game.board.units.values()
                     if u.owner != self.player]
         for unit in enemyUnits: unit.unitType.fuel = 0.50 * unit.unitType.fuel
@@ -175,11 +187,11 @@ class CO:
         game.setWeather("SNOW")
     
     def winterFury(self, game):
-        self.basicPower(POWERS_LOOKUP.get("winterFury"))
+        self.basicPower(POWERS_LOOKUP.get("winterFury"), game)
         game.setWeather("SNOW")
 
     def lightningStrike(self, game):
-        self.basicPower(POWERS_LOOKUP.get("lightningDrive"))
+        self.basicPower(POWERS_LOOKUP.get("lightningDrive"), game)
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits:
@@ -187,13 +199,13 @@ class CO:
             unit.attackAvailable = True
     
     def turboCharge(self, game):
-        self.basicPower(POWERS_LOOKUP.get("turboCharge"))
+        self.basicPower(POWERS_LOOKUP.get("turboCharge"), game)
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits: unit.resupply(game)
     
     def overdrive(self, game):
-        self.basicPower(POWERS_LOOKUP.get("overdrive"))
+        self.basicPower(POWERS_LOOKUP.get("overdrive"), game)
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits: unit.resupply(game)
@@ -201,11 +213,11 @@ class CO:
     def javierAndPowers(self, game):
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
-        for unit in myUnits: unit.defenseModifier = unit.getComBoost(game.board) / 100
+        for unit in myUnits: unit.defenseModifier = unit.getComBoost(game)
     
 
     def samuraiSpirit(self, game):
-        self.basicPower(POWERS_LOOKUP.get("samuraiSpirit"))
+        self.basicPower(POWERS_LOOKUP.get("samuraiSpirit"), game)
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
         for unit in myUnits: unit.counterModifier = 1.50
@@ -218,7 +230,7 @@ class CO:
             for x in range(game.board.width):
                 terrain = game.board.getTerrain(x, y)
                 if terrain.name == "City" and terrain.owner == self.player and (y, x) not in game.board.units:
-                    game.board.addUnit(unitTypes.get("INF"), x, y)
+                    game.board.addUnit(Unit(self.player, unitTypes.get("INF"), x, y), x, y)
                     game.board.setUnitHP(x, y, 90)
 
     def airborneAssault(self, game):
@@ -226,7 +238,7 @@ class CO:
             for x in range(game.board.width):
                 terrain = game.board.getTerrain(x, y)
                 if terrain.name == "City" and terrain.owner == self.player and (y, x) not in game.board.units:
-                    game.board.addUnit(unitTypes.get("MEC"), x, y)
+                    game.board.addUnit(Unit(self.player, unitTypes.get("MEC"), x, y), x, y)
                     game.board.setUnitHP(x, y, 90)
 
 
@@ -355,7 +367,7 @@ COs = {
     "Grit": CO("Grit", 3, 6, bp, "grit", bp, "snipeAttack", bp, "superSnipe"),
     "Olaf": CO("Olaf", 3, 7, None, None, CO.blizzard, None, CO.winterFury, None),
     "Sasha": CO("Sasha", 2, 6, None, None, CO.marketCrash, None, None, None),
-    "Drake": CO("Drake", 4, 7, bp, "drake", CO.typhoon, None, CO.tsunami, None),
+    "Drake": CO("Drake", 4, 7, bp, "drake", CO.tsunami, None, CO.typhoon, None),
     "Eagle": CO("Eagle", 3, 9, bp, "eagle", bp, "lightningDrive", CO.lightningStrike, None),
     "Javier": CO("Javier", 3, 6, CO.javierAndPowers, None, CO.javierAndPowers, None, CO.javierAndPowers, None),
     "Jess": CO("Jess", 3, 6, bp, "jess", CO.turboCharge, None, CO.overdrive, None),

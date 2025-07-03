@@ -11,7 +11,7 @@ terrain_codes = [[('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P
                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
-                     [('P',0),('P',0),('P',0),('P',0),('C',0), ('P',0), ('P',0), ('P',0)]]
+                     [('CM',1),('P',0),('P',0),('P',0),('C',1), ('P',0), ('P',0), ('P',0)]]
 startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
                      (Unit(-1,unitTypes.get('INF')), 1, 0),
                      (Unit(1,unitTypes.get('INF')), 3, 0), 
@@ -26,9 +26,11 @@ startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0),
                      (Unit(-1,unitTypes.get('TNK')), 7, 2),
                      (Unit(1,unitTypes.get('TNK')), 7, 3),
                      (Unit(-1,unitTypes.get('INF')), 7, 4)]
-game = Game(terrain_codes, terrain_types, player1CO=COs.get("Max"), player2CO=COs.get("Max"), startingUnits=startingUnits)
+game = Game(terrain_codes, terrain_types, player1CO=COs.get("Kanbei"), player2CO=COs.get("Max"), startingUnits=startingUnits)
+game.funds[1] = 50000
 game.getCO(1).gainMeter(200000)
-game.getCO(-1).gainMeter(200000)
+game.getCO(-1).gainMeter(30000)
+#game.board.units[(3,0)].health = 50
 board = game.board
 
 print(board)
@@ -38,6 +40,14 @@ game.playTurn(1)
 game.playTurn(1)
 
 print(board)
+
+### FUNCTIOING BASIC PARTS:
+# Attack increases
+# Movement increases
+# Range increases
+# Global Healing, Damage
+# Luck increases.
+# Value changes
 
 #### THINGS TO TEST (TODO):
 # 1. Test CO behavior
