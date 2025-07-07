@@ -7,29 +7,45 @@ from CO import COs
 
 #board = Board(terrain_codes, terrain_types, False)
 # create two units
-terrain_codes = [[('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
-                     [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
-                     [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
-                     [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
-                     [('CM',1),('P',0),('P',0),('P',0),('C',1), ('P',0), ('P',0), ('P',0)]]
+# terrain_codes = [[('C',1),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('HQ',1),('HQ',-1),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('CM',-1),('C',-1),('P',0),('P',0),('C',1), ('P',0), ('P',0), ('P',0)]]
+# startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+#                      (Unit(-1,unitTypes.get('INF')), 1, 0),
+#                      (Unit(1,unitTypes.get('INF')), 3, 0), 
+#                      (Unit(-1,unitTypes.get('INF')), 4, 0),
+#                      (Unit(1,unitTypes.get('INF')), 6, 0), 
+#                      (Unit(-1,unitTypes.get('INF')), 7, 0),
+#                      (Unit(1,unitTypes.get('TNK')), 0, 2),
+#                      (Unit(-1,unitTypes.get('TNK')), 1, 2),
+#                      (Unit(1,unitTypes.get('TNK')), 3, 2),
+#                      (Unit(-1,unitTypes.get('TNK')), 4, 2),
+#                      (Unit(1,unitTypes.get('TNK')), 6, 2),
+#                      (Unit(-1,unitTypes.get('TNK')), 7, 2),
+#                      (Unit(1,unitTypes.get('REC')), 7, 3),
+#                      (Unit(-1,unitTypes.get('INF')), 1, 4)]
+# startingUnits = [(Unit(1,unitTypes.get('TNK')), 0, 0),
+#                  (Unit(-1,unitTypes.get('INF')), 2, 0),
+#                  (Unit(-1,unitTypes.get('INF')), 2, 2),
+#                  (Unit(-1,unitTypes.get('INF')), 0, 2),
+#                  (Unit(-1,unitTypes.get('INF')), 4, 2),
+#                  (Unit(-1,unitTypes.get('INF')), 2, 4),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 0),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 1),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 2),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 3),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 4),
+#                  (Unit(-1,unitTypes.get('INF')), 7, 2)]
+terrain_codes = [[('P',0),('P',0),('P', 0), ('P', 0)]]
 startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
-                     (Unit(-1,unitTypes.get('INF')), 1, 0),
-                     (Unit(1,unitTypes.get('INF')), 3, 0), 
-                     (Unit(-1,unitTypes.get('INF')), 4, 0),
-                     (Unit(1,unitTypes.get('INF')), 6, 0), 
-                     (Unit(-1,unitTypes.get('INF')), 7, 0),
-                     (Unit(1,unitTypes.get('TNK')), 0, 2),
-                     (Unit(-1,unitTypes.get('TNK')), 1, 2),
-                     (Unit(1,unitTypes.get('TNK')), 3, 2),
-                     (Unit(-1,unitTypes.get('TNK')), 4, 2),
-                     (Unit(1,unitTypes.get('TNK')), 6, 2),
-                     (Unit(-1,unitTypes.get('TNK')), 7, 2),
-                     (Unit(1,unitTypes.get('TNK')), 7, 3),
-                     (Unit(-1,unitTypes.get('INF')), 7, 4)]
-game = Game(terrain_codes, terrain_types, player1CO=COs.get("Kanbei"), player2CO=COs.get("Max"), startingUnits=startingUnits)
-game.funds[1] = 50000
-game.getCO(1).gainMeter(200000)
-game.getCO(-1).gainMeter(30000)
+                     (Unit(1,unitTypes.get('INF')), 1, 0), 
+                     (Unit(1,unitTypes.get('APC')), 2, 0)]
+game = Game(terrain_codes, terrain_types, player1CO=COs.get("Von Bolt"), player2CO=COs.get("Olaf"), startingUnits=startingUnits)
+#game.funds[1] = 50000
+#game.getCO(1).gainMeter(200000)
+#game.getCO(-1).gainMeter(200000)
 #game.board.units[(3,0)].health = 50
 board = game.board
 
@@ -40,21 +56,6 @@ game.playTurn(1)
 game.playTurn(1)
 
 print(board)
-
-### FUNCTIOING BASIC PARTS:
-# Attack increases
-# Movement increases
-# Range increases
-# Global Healing, Damage
-# Luck increases.
-# Value changes
-
-#### THINGS TO TEST (TODO):
-# 1. Test CO behavior
-# 2. Test weather effects
-
-#### THINGS LEFT TO IMPLEMENT:
-# 1. Modify the random input to include all the cases that Manual has
 
 
 

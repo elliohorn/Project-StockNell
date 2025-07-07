@@ -233,56 +233,97 @@ class DummyGame(Game):
 
 # COs Confirmed to be functioning correctly:
     # All CO's with basic D2Ds, Powers, and Supers. (Andy, Jake, Max, Nell, Sami, Grit, Grimm, Adder, Flak, Jugger, Koal)
-    # Hachi, Colin, Olaf, Sasha, Drake, Eagle, Javier, Jess, Kanbei
-# Left to Test:
-    # Rachel, Sensei, Sonja, Hawke, Kindle, Lash, Sturm, Von Bolt
+    # Hachi, Colin, Olaf, Sasha, Drake, Eagle, Javier, Jess, Kanbei, Sensei, Sonja, Hawke, Kindle, Lash, Rachel, Sturm, Von Bolt
 
-# COs Confirmed to have errors:
-# 
+def testJoining(monkeypatch):
+    terrain_codes = [[('P',0),('P',0)]]
+    startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+                     (Unit(1,unitTypes.get('INF')), 1, 0)]
+    game = Game(terrain_codes, terrain_types, player1CO=COs.get("Von Bolt"), player2CO=COs.get("Olaf"), startingUnits=startingUnits)
+    game.board.units[(1,0)].health = 50
+    inputs = iter(['move', 0, 'end', 'end'])
+    monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
+    game.playTurn()
+    game.playTurn()
+    game.playTurn()
+    assert game.board.units[(1,0)].health == 100 and game.funds[1] == 1500 and (0,0) not in game.board.units
+
+def testLoading(monkeypatch):
+    terrain_codes = [[('P',0),('P',0),('P', 0), ('P', 0)]]
+    startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+                     (Unit(1,unitTypes.get('INF')), 1, 0), 
+                     (Unit(1,unitTypes.get('APC')), 2, 0)]
+    game = Game(terrain_codes, terrain_types, player1CO=COs.get("Von Bolt"), player2CO=COs.get("Olaf"), startingUnits=startingUnits)
+    inputs = iter(['move', 1, 'skip', 'unload', 0, 'move', 1, 'unload', 0, 'end'])
+    monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
+    game.playTurn()
+    game.playTurn()
+    game.playTurn()
+    assert (3,0) in game.board.units and (1,0) in game.board.units and len(game.board.units[(2,0)].loaded) == 0
 
 def testCOs(monkeypatch):
     print("************** STARTING CO TEST *********************")
-    terrain_codes = [[('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+    terrain_codes = [[('C',1),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
                      [('HQ',1),('HQ',-1),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
                      [('CM',1),('C',1),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)]]
-    startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
-                     (Unit(-1,unitTypes.get('INF')), 1, 0),
-                     (Unit(1,unitTypes.get('INF')), 3, 0), 
-                     (Unit(-1,unitTypes.get('INF')), 4, 0),
-                     (Unit(1,unitTypes.get('INF')), 6, 0), 
-                     (Unit(-1,unitTypes.get('INF')), 7, 0),
-                     (Unit(1,unitTypes.get('TNK')), 0, 2),
-                     (Unit(-1,unitTypes.get('TNK')), 1, 2),
-                     (Unit(1,unitTypes.get('TNK')), 3, 2),
-                     (Unit(-1,unitTypes.get('TNK')), 4, 2),
-                     (Unit(1,unitTypes.get('TNK')), 6, 2),
-                     (Unit(-1,unitTypes.get('TNK')), 7, 2),
-                     (Unit(1,unitTypes.get('TNK')), 7, 3),
-                     (Unit(-1,unitTypes.get('INF')), 7, 4)]
-    game = Game(terrain_codes, terrain_types, player1CO=COs.get("Sensei"), player2CO=COs.get("Max"), startingUnits=startingUnits)
+    # startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+    #                  (Unit(-1,unitTypes.get('INF')), 1, 0),
+    #                  (Unit(1,unitTypes.get('INF')), 3, 0), 
+    #                  (Unit(-1,unitTypes.get('INF')), 4, 0),
+    #                  (Unit(1,unitTypes.get('INF')), 6, 0), 
+    #                  (Unit(-1,unitTypes.get('INF')), 7, 0),
+    #                  (Unit(1,unitTypes.get('TNK')), 0, 2),
+    #                  (Unit(-1,unitTypes.get('TNK')), 1, 2),
+    #                  (Unit(1,unitTypes.get('TNK')), 3, 2),
+    #                  (Unit(-1,unitTypes.get('TNK')), 4, 2),
+    #                  (Unit(1,unitTypes.get('TNK')), 6, 2),
+    #                  (Unit(-1,unitTypes.get('TNK')), 7, 2),
+    #                  (Unit(1,unitTypes.get('TNK')), 7, 3),
+    #                  (Unit(-1,unitTypes.get('INF')), 7, 4)]
+    startingUnits = [(Unit(1,unitTypes.get('ART')), 0, 0),
+                 (Unit(-1,unitTypes.get('ART')), 2, 0),
+                 (Unit(-1,unitTypes.get('ART')), 2, 2),
+                 (Unit(-1,unitTypes.get('ART')), 0, 2),
+                 (Unit(-1,unitTypes.get('ART')), 3, 2),
+                 (Unit(-1,unitTypes.get('ART')), 2, 4),
+                 (Unit(-1,unitTypes.get('TNK')), 6, 0),
+                 (Unit(-1,unitTypes.get('TNK')), 6, 1),
+                 (Unit(-1,unitTypes.get('TNK')), 6, 2),
+                 (Unit(-1,unitTypes.get('TNK')), 6, 3),
+                 (Unit(-1,unitTypes.get('TNK')), 6, 4),
+                 (Unit(-1,unitTypes.get('TNK')), 7, 2)]
+    game = Game(terrain_codes, terrain_types, player1CO=COs.get("Von Bolt"), player2CO=COs.get("Max"), startingUnits=startingUnits)
+    game.board.units[(0,0)].health == 70
     game.getCO(1).gainMeter(200000)
     game.getCO(-1).gainMeter(30000)
-    inputs = iter(['n', 'n', 'attack', 0, # Unit 1 attacks, no COP/SCOP, but with D2D active
-                    'n', 'y', 'attack', 0, 'end', # Unit 3 attacks with SCOP active, Unit 5 waits
-                    'end', 'end', 'end', 'move', 0, 'end', # All 3 units on the middle row wait, unit 9 attempts to move at max range. Turn swaps.
-                    'n', 'n', 'end', 'n','n','end', 'n','n', 'end', # All 3 units on the top row wait.
-                    'n', 'n', 'attack', 0, # Unit 8 attacks, no COP/SCOP, but with D2D active.
-                    'y', 'attack', 0, 'end', 'end', # Unit 10 attacks with COP active, Unit 12 waits
-                    'end', 'end', 'end', 'end', 'end', 'end', 'end']) # All units wait to test if COP/SCOP deactivates
+    # inputs = iter(['n', 'n', 'attack', 0, # Unit 1 attacks, no COP/SCOP, but with D2D active
+    #                 'n', 'y', 'attack', 0, 'end', # Unit 3 attacks with SCOP active, Unit 5 waits
+    #                 'end', 'end', 'end', 'move', 0, 'end', # All 3 units on the middle row wait, unit 9 attempts to move at max range. Turn swaps.
+    #                 'n', 'n', 'end', 'n','n','end', 'n','n', 'end', # All 3 units on the top row wait.
+    #                 'n', 'n', 'attack', 0, # Unit 8 attacks, no COP/SCOP, but with D2D active.
+    #                 'y', 'attack', 0, 'end', 'end', # Unit 10 attacks with COP active, Unit 12 waits
+    #                 'end', 'end', 'end', 'end', 'end', 'end', 'end']) # All units wait to test if COP/SCOP deactivates
+    inputs = iter(['n', 'y', 'end',
+                   'y', 'end','end','end','end','end','end','end','end','end','end','end',
+                   'end'])
     monkeypatch.setattr('builtins.input', lambda prompt='': next(inputs))
     #game.board.units[(3,0)].health = 50
+    units = game.board.units
     game.playTurn()
-    #assert (1,4) in game.board.units and game.board.units[(1,4)].health == 90
+    #assert units[(2,0)].health == 20 and units[(2,2)].health == 20 and units[(0,2)].health == 20 and units[(3,2)].health == 20 and units[(2,4)].health == 20 
+    assert units[(6,0)].health == 70 and units[(6,1)].health == 70 and units[(6,2)].health == 70 and units[(6,3)].health == 70 and units[(6,4)].health == 70 and units[(7,2)].health == 70
+    assert units[(6,0)].disabled == True and units[(6,1)].disabled == True and units[(6,2)].disabled == True and units[(6,3)].disabled == True and units[(6,4)].disabled == True and units[(7,2)].disabled == True
     game.playTurn()
+    assert units[(6,0)].disabled == False and units[(6,1)].disabled == False and units[(6,2)].disabled == False and units[(6,3)].disabled == False and units[(6,4)].disabled == False and units[(7,2)].disabled == False
     game.playTurn()
     print("************** CO TEST ENDING *******************")
     # assert (game.board.units[(1,0)].health >= 28 and game.board.units[(1,0)].health <= 36) and (game.board.units[(0,2)].health >= 40 and game.board.units[(0,2)].health <= 48)  # Test 1: D2D power change occurs.
     # assert (game.board.units[(3,2)].health >= 32 and game.board.units[(3,2)].health <= 39) # Test 2: COP power change is applied properly
     # assert (game.board.units[(4,0)].health >= 3 and game.board.units[(4,0)].health <= 11) # Test 3: SCOP power change is applied properly
     assert game.getCO(1).powerStage == 0 # Test 4: The player's power is deactivated upon switching turns
-    #assert game.board.units[(7,4)].health <= 80  # Test 5+: Any unique scenarios that need to be tested
+    # Test 5+: Any unique scenarios that need to be tested
 
 
 # def test_parsing():

@@ -69,7 +69,7 @@ class Unit:
         self.attackModifier = 0
         self.defenseModifier = 0
         self.counterModifier = 1
-        self.disabled = 0
+        self.disabled = False
         if self.unitType.transportsUnits:
             self.loaded = []
 
@@ -113,7 +113,7 @@ class Unit:
             case "Koal":
                 if tileOn.name in ("Road", "Bridge"): return 10 + 10 * game.getCO(self.owner).powerStage
             case "Lash":
-                if game.getCO(self.owner).powerStage == 0:
+                if game.getCO(self.owner).powerStage != 2:
                     return 10 * tileOn.defenseBonus
                 elif game.getCO(self.owner).powerStage == 2:
                     return 10 * tileOn.defenseBonus * 2
@@ -123,16 +123,17 @@ class Unit:
 
 
     def getAttackBoost(self, game):
-        return 100 + self.getComBoost(game) + self.attackModifier + self.terrainDependentBoosts(self.x, self.y, game) + (10 if game.getCO(game.currentPlayer).powerStage in (1, 2) else 0)
+        return 100 + self.getComBoost(game) + self.attackModifier + self.terrainDependentBoosts(self.x, self.y, game) + (10 if game.getCO(self.owner).powerStage in (1, 2) else 0)
 
     def attack(self, defender, game, minLuck=0, maxLuck=9):
         board = game.board
         attacker = self
-        if game.getCO(self.owner) == "Sonja" and game.getCO(self.owner).powerStage == 2:
+        x = game.getCO(self.owner).name
+        if game.getCO(self.owner * -1).name == "Sonja" and game.getCO(self.owner * -1).powerStage == 2:
             # If counter break is active, we switch who is attacking
             temp = defender
             defender = attacker
-            attacker = defender
+            attacker = temp
         print("Attacking!")
         if attacker.unitType.ammo <= 0:
             print("Unit is out of ammo!")
@@ -166,7 +167,7 @@ class Unit:
             elif attacker.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
 
                 base = defender.damageAgainst(attacker)
-                defenseBonus = board.getDefenseBonus(attacker, attacker.x, attacker.y, game) + (1 if game.getCO(defender.owner).powerStage in (1, 2) else 0)
+                defenseBonus = board.getDefenseBonus(attacker, attacker.x, attacker.y, game) + (1 if game.getCO(attacker.owner).powerStage in (1, 2) else 0)
                 attackBonus = defender.getAttackBoost(game)
                 #damage = int(((base * attackBonus * defender.counterModifier)/100 + random.randint(minLuck, maxLuck)) * defender.health/100  *  (200 - (attacker.defenseModifier + (10 * defenseBonus) * (attacker.health/10)))/100)
                 damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + attacker.defenseModifier))/100))
@@ -187,6 +188,29 @@ class Unit:
         else:
             print("Unit unable to attack!")
         
+    def joinUnits(self, destUnit, game):
+        unitToJoin = self
+        if unitToJoin.unitType.unitName != destUnit.unitType.unitName:
+            return
+        if unitToJoin.health + destUnit.health > 100:
+            surplus = unitToJoin.health + destUnit.health - 100
+            surplusValue = (surplus/100) * unitToJoin.unitType.value
+            game.funds[game.currentPlayer] += surplusValue
+
+        destUnit.health += unitToJoin.health
+        destUnit.unitType.ammo += unitToJoin.unitType.ammo
+        destUnit.unitType.fuel += unitToJoin.unitType.fuel
+
+        if destUnit.health > 100: destUnit.health = 100
+        if destUnit.unitType.ammo > destUnit.unitType.ammoMax:
+            destUnit.unitType.ammo = destUnit.unitType.ammoMax
+        if destUnit.unitType.fuel > destUnit.unitType.fuelMax:
+            destUnit.unitType.fuel = destUnit.unitType.fuelMax
+
+        game.board.units[(destUnit.x, destUnit.y)].movement = 0
+        game.board.units[(destUnit.x, destUnit.y)].attackAvailable = False
+        game.board.removeUnit(unitToJoin, unitToJoin.x, unitToJoin.y)
+
 
     def disable(self):
         self.movement = 0
@@ -196,8 +220,9 @@ class Unit:
     def resupply(self, game, healthToHeal=0):
         self.unitType.ammo = self.unitType.ammoMax
         self.unitType.fuel = self.unitType.fuelMax
-        if game.funds[game.currentPlayer] >= (healthToHeal/100) * self.unitType.value:
+        if game.funds[game.currentPlayer] >= (healthToHeal/100) * self.unitType.value and self.health < 100:
             self.health += healthToHeal
+            if self.health > 100: self.health == 100
             game.funds[game.currentPlayer] -= (healthToHeal/100) * self.unitType.value 
 
 

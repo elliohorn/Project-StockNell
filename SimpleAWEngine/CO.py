@@ -117,7 +117,7 @@ class CO:
 
         if len(luckModifier) > 0: 
             if "(" in luckModifier:
-                luckBounds = luckModifier.strip().split(",")
+                luckBounds = luckModifier.strip("()").split(",")
                 self.luckLowerBound = int(luckBounds[0])
                 self.luckUpperBound = int(luckBounds[1])
             else:
@@ -125,7 +125,7 @@ class CO:
 
         if len(globalHPChange) > 0:
             if "(" in globalHPChange:
-                hpBounds = globalHPChange.strip().split(",")
+                hpBounds = globalHPChange.strip("()").split(",")
                 board.globalHPChange(self.player * -1, int(hpBounds[0]))
                 board.globalHPChange(self.player, int(hpBounds[1]))
             else:
@@ -243,9 +243,12 @@ class CO:
 
 
     def sonja(self, game):
+        self.basicPower(POWERS_LOOKUP.get("sonja"), game)
         myUnits = [u for u in game.board.units.values()
                     if u.owner == self.player]
-        for unit in myUnits: unit.unitType.vision = unit.unitType.baseVision + 1
+        for unit in myUnits: 
+            unit.unitType.vision = unit.unitType.baseVision + 1
+            unit.counterModifier = 1.50
     
     def enhancedVision(self, game):
         myUnits = [u for u in game.board.units.values()
@@ -264,11 +267,13 @@ class CO:
                 unit.health = 1 
     
     def highSociety(self, game):
+        firepowerBonus = 0
         for (x,y), b in game.board.buildings.items():
             if b.owner == game.currentPlayer and b.name in ("City","Base","Aiport","Harbor","HQ"):
                 firepowerBonus += 3
-        powerList = ['','','',f"({firepowerBonus},0,0,'ALL')",'']
-        self.basicPower(powerList, game.board)
+        template = POWERS_LOOKUP.get("colin")
+        modified = template.replace(template[6:21], f"({firepowerBonus},0,0,'ALL')")
+        self.basicPower(modified, game)
 
     def perfectMovement(self, game):
         if game.weather != "SNOW":
@@ -286,16 +291,16 @@ class CO:
     def missilePowers(self, game):
         match self.name:
             case "Rachel":
-                self.missileHelper(game, "FTHP", 3)
-                self.missileHelper(game, "VAL", 3)
-                self.missileHelper(game, "HP", 3)
+                self.missileHelper(game, "FTHP", 30)
+                self.missileHelper(game, "VAL", 30)
+                self.missileHelper(game, "HP", 30)
             case "Sturm":
                 match random.randint(1, 3):
-                    case 1: self.missileHelper("HP", 4 * self.powerStage)
-                    case 2: self.missileHelper("VAL", 4 * self.powerStage)
-                    case 3: self.missileHelper("INDIRVAL", 4 * self.powerStage) 
+                    case 1: self.missileHelper(game, "HP", 40 * self.powerStage)
+                    case 2: self.missileHelper(game, "VAL", 40 * self.powerStage)
+                    case 3: self.missileHelper(game, "INDIRVAL", 40 * self.powerStage) 
             case "Von Bolt":
-                self.missileHelper("VAL", 3)
+                self.missileHelper(game, "VAL", 30)
 
     def missileHelper(self, game, type, damageAmount):
         largestTotal = 0
@@ -305,18 +310,20 @@ class CO:
                 totalHere = self.searchRange(x, y, game.board, type)
                 if totalHere > largestTotal:
                     largestTotal = totalHere
-                    targetedSquare = (y,x)
+                    targetedSquare = (y,x)         
+        print(f"Missile targets unit at {(y,x)} for {damageAmount} damage!")
         if self.name == "Von Bolt":
             self.searchRange(targetedSquare[1], targetedSquare[0], game.board, "DISABLE", damageAmount)
         else:
             self.searchRange(targetedSquare[1], targetedSquare[0], game.board, "DAMAGE", damageAmount)
         
 
-    def searchRange(x, y, board, searchType, damage=0):
+    def searchRange(self, x, y, board, searchType, damage=0):
         start = (x,y)
         frontier = [(0, start)]
         distanceSearched = 0
         searchTotal = 0
+        discoveredUnits = []
         while frontier:
             dist, (x, y) = heapq.heappop(frontier)
             # Explore neighbors
@@ -328,24 +335,41 @@ class CO:
                 heapq.heappush(frontier, (distanceSearched, (nx, ny)))
                 if (nx, ny) not in board.units:
                     continue
+                if board.units[(nx, ny)].owner == self.player:
+                    continue
+                if board.units[(nx, ny)] in discoveredUnits:
+                    continue
+                
                 match searchType:
                     case "FTHP":
-                        unitName =  board.units[(nx, ny)].unitType.unitName == "INF"
-                        if unitName == "INF" or unitName == "MEC":
+                        unitName = board.units[(nx, ny)].unitType.unitName
+                        if (unitName == "INF" or unitName == "MEC"):
                             searchTotal += board.units[(nx, ny)].health
+                            discoveredUnits.append(board.units[(nx,ny)])
                     case "HP":
                         searchTotal += board.units[(nx,ny)].health
+                        discoveredUnits.append(board.units[(nx,ny)])
                     case "VAL":
                         searchTotal += board.units[(nx,ny)].unitType.value
+                        discoveredUnits.append(board.units[(nx,ny)])
                     case "INDIRVAL":
-                        if board.units[(nx,ny)].minRange != 0:
+                        if board.units[(nx,ny)].unitType.minRange != 0:
                             searchTotal += board.units[(nx,ny)].unitType.value * 2
                         else:
                             searchTotal += board.units[(nx,ny)].unitType.value
+                        discoveredUnits.append(board.units[(nx,ny)])
                     case "DAMAGE":
-                        board.units[(nx,ny)].health -= damage
+                        if board.units[(nx,ny)].health - damage <= 0:
+                            board.units[(nx,ny)].health = 1
+                        else:
+                            board.units[(nx,ny)].health -= damage
+                        discoveredUnits.append(board.units[(nx,ny)])
                     case "DISABLE":
-                        board.units[(nx,ny)].health -= damage
+                        if board.units[(nx,ny)].health - damage <= 0:
+                            board.units[(nx,ny)].health = 1
+                        else:
+                            board.units[(nx,ny)].health -= damage
+                        discoveredUnits.append(board.units[(nx,ny)])
                         board.units[(nx,ny)].disable()
         return searchTotal
 
@@ -373,7 +397,7 @@ COs = {
     "Jess": CO("Jess", 3, 6, bp, "jess", CO.turboCharge, None, CO.overdrive, None),
     "Grimm": CO("Grimm", 3, 6, bp, "grimm", bp, "knuckleduster", bp, "haymaker"),
     "Kanbei": CO("Kanbei", 4, 7, bp, "kanbei", bp, "moraleBoost", CO.samuraiSpirit, None),
-    "Sensei": CO("sensei", 2, 6, bp, "sensei", CO.copterCommand, None, CO.airborneAssault, None),
+    "Sensei": CO("Sensei", 2, 6, bp, "sensei", CO.copterCommand, None, CO.airborneAssault, None),
     "Sonja": CO("Sonja", 3, 5, CO.sonja, None, CO.enhancedVision, None, None, None),
     "Flak": CO("Flak", 3, 6, bp, "flak", bp, "bruteForce", bp, "barbaricBlow"),
     "Hawke": CO("Hawke", 5, 9, bp, "hawke", bp, "blackWave", bp, "blackStorm"),

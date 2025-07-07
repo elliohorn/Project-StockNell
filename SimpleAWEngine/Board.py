@@ -229,11 +229,19 @@ class Board:
             raise ValueError(f"Square {(x,y)} already empty") 
         self.units.pop((x,y))
 
-    def moveUnit(self, fromX: int, fromY: int, toX: int, toY: int, legalMoves, moveCosts):
+    def moveUnit(self, fromX: int, fromY: int, toX: int, toY: int, legalMoves, moveCosts, game):
         if (fromX, fromY) not in self.units:
             raise ValueError(f"No unit at starting point {(fromX, fromY)}")
         if (toX, toY) in self.units:
-            return
+            unitAtTile = self.units[(toX, toY)]
+            unit = self.units[(fromX, fromY)]
+            # Handles joining and transport loading
+            if unit.unitType.unitName == unitAtTile.unitType.unitName:
+                unit.joinUnits(unitAtTile, game)
+            if unitAtTile.unitType.transportsUnits and unitAtTile.unitType.transportCapacity > 0:
+                self.loadUnit(unitAtTile, unit)
+            return            
+
             #raise ValueError(f"Destination occupied at {(toX, toY)}")
         
         unit = self.units.pop((fromX, fromY))
@@ -256,8 +264,8 @@ class Board:
         if len(transport.loaded) >= transport.unitType.transportCapacity:
             raise ValueError("Transport full")
         
-        if (unit.x, unit.y) != (transport.x, transport.y):
-            raise ValueError("Unit must move onto the transport tile to load")
+        # if (unit.x, unit.y) != (transport.x, transport.y):
+        #     raise ValueError("Unit must move onto the transport tile to load")
         
         if self.canLoad(transport, unit):
             # remove from board
@@ -373,6 +381,10 @@ class Board:
                 # only allow if it’s your own transport
                 if other.owner == unit.owner and other.unitType.transportCapacity > 0 and self.canLoad(other, unit):
                     legal_moves.append(pos)
+                # allow the same unit types to stack for joining
+                if other.unitType.unitName == unit.unitType.unitName:
+                    legal_moves.append(pos)
+
             else:
                 legal_moves.append(pos)
         return legal_moves, cost_so_far
@@ -435,7 +447,13 @@ class Board:
         myUnits = [u for u in self.units.values()
                   if u.owner == owner]
         for unit in myUnits:
-            unit.health += amount * 10
+            if unit.health - (amount * 10) <= 0: 
+                unit.health = 1
+            else:
+                unit.health += amount * 10
+            if unit.health > 100: 
+                unit.health = 100
+            
 
     def globalValueChange(self, owner, discount):
         myUnits = [u for u in self.units.values()
@@ -468,6 +486,7 @@ class Board:
         moveAmount = int(modifiers[1])
         defenseAmount = int(modifiers[2])
         captureModifier = None
+        indirBonus = None
         type = modifiers[3].strip(")").strip("'")
         print(f"MODS: {modifiers}")
         if len(modifiers) == 5 and type == "INF": captureModifier = float(modifiers[4].strip(")"))
@@ -490,7 +509,7 @@ class Board:
                 for unit in myUnits:
                     if unit.unitType.minRange != 0:
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
-                        unit.unitType.maxRange = unit.unitType.staticMax + indirBonus
+                        if indirBonus is not None: unit.unitType.maxRange = unit.unitType.staticMax + indirBonus
             case 'GROUND':
                 for unit in myUnits:
                     moveType = unit.unitType.moveType

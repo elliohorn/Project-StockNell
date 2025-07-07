@@ -56,6 +56,7 @@ class Game:
         self.weatherTimer = 2
 
     def weatherEffects(self):
+        print(f"Weather: {self.weather}")
         if self.weather == "RAIN" and self.getCO(self.currentPlayer).name != "Drake" and self.getCO(self.currentPlayer).name != "Olaf":
             for y in range(self.board.height):
                 for x in range(self.board.width):
@@ -63,6 +64,7 @@ class Game:
                     if terrain.name == "Forest" or terrain.name == "Plains":
                         terrain.treadMoveCost += 1
                         terrain.tireMoveCost += 1
+            return True
         if (self.weather == "SNOW" and self.getCO(self.currentPlayer).name != "Olaf") or ((self.weather == "RAIN" and self.getCO(self.currentPlayer).name == "Olaf")):
             for y in range(self.board.height):
                 for x in range(self.board.width):
@@ -84,48 +86,50 @@ class Game:
                             terrain.seaMoveCost *= 2
                             terrain.landerMoveCost *= 2
                     terrain.airMoveCost *= 2
+            return True
         
     def resetWeather(self):
-        if self.weather == "RAIN" and self.getCO(self.currentPlayer).name != "Drake" and self.getCO(self.currentPlayer).name != "Olaf":
+        if self.weather == "RAIN": #and self.getCO(self.currentPlayer).name != "Drake" and self.getCO(self.currentPlayer).name != "Olaf":
             for y in range(self.board.height):
                 for x in range(self.board.width):
                     terrain = self.board.getTerrain(x, y)
                     if terrain.name == "Forest" or terrain.name == "Plains":
                         terrain.treadMoveCost -= 1
                         terrain.tireMoveCost -= 1
-        if (self.weather == "SNOW" and self.getCO(self.currentPlayer).name != "Olaf") or ((self.weather == "RAIN" and self.getCO(self.currentPlayer).name == "Olaf")):
+        if self.weather == "SNOW": # and self.getCO(self.currentPlayer).name != "Olaf") or ((self.weather == "RAIN" and self.getCO(self.currentPlayer).name == "Olaf")):
             for y in range(self.board.height):
                 for x in range(self.board.width):
                     terrain = self.board.getTerrain(x, y)
                     match terrain.name:
                         case "Plains":
-                            terrain.infMoveCost *= 0.5
+                            terrain.infMoveCost = int(terrain.infMoveCost * 0.5)
                             terrain.treadMoveCost -= 1
                             terrain.tireMoveCost -= 1
                         case "Forest":
-                            terrain.infMoveCost *= 0.5
+                            terrain.infMoveCost = int(terrain.infMoveCost * 0.5)
                         case "Mountain":
-                            terrain.infMoveCost *= 0.5
-                            terrain.mecMoveCost *= 0.5
+                            terrain.infMoveCost = int(terrain.infMoveCost * 0.5)
+                            terrain.mecMoveCost = int(terrain.mecMoveCost * 0.5)
                         case "Sea":
-                            terrain.seaMoveCost *= 0.5
-                            terrain.landerMoveCost *= 0.5
+                            terrain.seaMoveCost = int(terrain.seaMoveCost * 0.5)
+                            terrain.landerMoveCost = int(terrain.landerMoveCost * 0.5)
                         case "Harbor":
-                            terrain.seaMoveCost *= 0.5
-                            terrain.landerMoveCost *= 0.5
-                    terrain.airMoveCost *= 0.5
+                            terrain.seaMoveCost = int(terrain.seaMoveCost * 0.5)
+                            terrain.landerMoveCost = int(terrain.landerMoveCost * 0.5)
+                    terrain.airMoveCost = int(terrain.airMoveCost * 0.5)
 
 
     def playTurn(self, inputType=0, FOW=False):
         self.collectIncome()
+        weatherChanged = False
         if self.weather != "CLEAR":
-            self.weatherEffects()
+            weatherChanged = self.weatherEffects()
         if self.getCO(self.currentPlayer).powerStage != 0:
             self.getCO(self.currentPlayer).resetPowers(self)
         # Build an initial queue of your units
         actionQueue = deque(
             u for u in self.board.units.values()
-            if u.owner == self.currentPlayer
+            if u.owner == self.currentPlayer and u.disabled == False
         )
 
         myUnits = [u for u in self.board.units.values()
@@ -157,6 +161,8 @@ class Game:
                 if choice == "y": 
                     self.getCO(self.currentPlayer).activate_co(self) 
                     if self.getCO(self.currentPlayer).name == "Sensei":
+                        myUnits = [u for u in self.board.units.values()
+                                    if u.owner == self.currentPlayer]
                         for indivUnit in myUnits:
                             if indivUnit.unitType.unitName == "INF" and indivUnit.health == 90 and indivUnit not in actionQueue:
                                 actionQueue.append(indivUnit)
@@ -169,6 +175,8 @@ class Game:
                         for indivUnit in myUnits:
                             if indivUnit not in actionQueue: actionQueue.append(indivUnit)
                     elif self.getCO(self.currentPlayer).name == "Sensei":
+                        myUnits = [u for u in self.board.units.values()
+                                    if u.owner == self.currentPlayer]
                         for indivUnit in myUnits:
                             if indivUnit.unitType.unitName == "MEC" and indivUnit.health == 90 and indivUnit not in actionQueue:
                                 actionQueue.append(indivUnit)
@@ -183,7 +191,7 @@ class Game:
             print(f"Unit: {unit} MP={unit.movement} Fuel={unit.unitType.fuel}")
             for i, dest in enumerate(moves):
                 print(f"{i}: → {dest} (cost {costs[dest]})")
-            print(f"Actions: move, load, unload, capture, attack, stealth={unit.unitType.stealthable}, end")
+            print(f"Actions: move, skip, unload, capture, attack, stealth={unit.unitType.stealthable}, end")
             action = input("Action? ").strip().lower()
             print(action)
             match action:
@@ -192,22 +200,28 @@ class Game:
                     print(idx != 'wait')
                     if idx != 'wait': dest = moves[int(idx)]
                     else: dest = (unit.x, unit.y)
-                    self.board.moveUnit(unit.x, unit.y, *dest, moves, costs)
-                    actionQueue.appendleft(unit)
+                    self.board.moveUnit(unit.x, unit.y, *dest, moves, costs, self)
+                    if (unit.x, unit.y) in self.board.units: actionQueue.appendleft(unit)
 
                 # _do not_ mark unit done—maybe you want to load/unload next
                 # action_queue.appendleft(unit)  # optionally replay immediately
 
-                case "load":
-                    # only valid if stacked on a transport
-                    transport = self.board.units.get((unit.x, unit.y))
-                    if transport and transport.unitType.transportCapacity > 0:
-                        self.board.loadUnit(transport, unit)
-                        print(f"Loaded into {transport}")
-                        # Re-enqueue the transport so you can then unload it:
-                        actionQueue.appendleft(transport)
-                    else:
-                        print("No transport here.")
+                # case "join":
+                #     unitToJoin = self.board.units.get((unit.x, unit.y))
+                #     unit.joinUnits(unitToJoin, self)
+                #     self.board.units[(unit.x, unit.y)].disable()
+                
+
+                # case "load":
+                #     # only valid if stacked on a transport
+                #     transport = self.board.units.get((unit.x, unit.y))
+                #     if transport and transport.unitType.transportCapacity > 0:
+                #         self.board.loadUnit(transport, unit)
+                #         print(f"Loaded into {transport}")
+                #         # Re-enqueue the transport so you can then unload it:
+                #         actionQueue.appendleft(transport)
+                #     else:
+                #         print("No transport here.")
 
                 case "unload":
                     # only valid if this unit is a transport with cargo
@@ -270,6 +284,9 @@ class Game:
                 case "end":
                     # mark this unit done for the rest of the turn
                     done.add(unit)
+                case "skip":
+                    actionQueue.append(unit)
+                
                 case _:
                     print("Unknown action.")
                     # re-enqueue so they can try again
@@ -278,10 +295,12 @@ class Game:
         # After exhausting the queue, do your end_of_turn(), switch player, etc.
         self.productionStep(inputType)
         self.endTurn()
+        if self.weather != "CLEAR" and weatherChanged:
+            self.resetWeather()
         if self.weatherTimer != 0: 
             self.weatherTimer -= 1
             if self.weatherTimer == 0:
-                self.resetWeather()
+                self.weather = "CLEAR"
         self.currentPlayer *= -1
 
     def productionStep(self, inputType):
@@ -335,13 +354,13 @@ class Game:
         match unit.unitType.moveType:
             case "SEA":
                 if at.name == "Harbor":
-                    unit.resupply(self, 20 + modifier)
+                    unit.resupply(self, 20 + (10 * modifier))
             case "AIR":
                 if at.name == "Airport":
-                    unit.resupply(self, 20 + modifier)
+                    unit.resupply(self, 20 + (10 * modifier))
             case _:
                 if at.name == "Base" or at.name == "City":
-                    unit.resupply(self, 20 + modifier)
+                    unit.resupply(self, 20 + (10 * modifier))
 
     def endTurn(self):
         for unit in list(self.board.units.values()):
@@ -353,7 +372,7 @@ class Game:
 
         ## FOG UPDATE GOES HERE WHEN IMPLEMENTED
         # self.board.updateVisibility(self.currentPlayer)
-
+        print("Turn over")
         winner = self.checkVictory()
         if winner is not None:
             print(f"Player {winner} wins!")
@@ -368,11 +387,11 @@ class Game:
             return self.currentPlayer
         if self.board.HQCapped != (0, False): # Check for HQ Capture
             return self.board.HQCapped[0] * -1
-        if not hqCoords: # Check for total lab captures on maps with no HQs
+        if len(hqCoords) == 0: # Check for total lab captures on maps with no HQs
             labCoords = [pos for pos, b in self.board.buildings.items() if b.name == "Lab"]
             # if current player has zero labs, they lose
             myLabs = [c for c in labCoords if self.board.buildings[c].owner == self.currentPlayer]
-            if not myLabs:
+            if len(myLabs) == 0:
                 return opp
         return self.checkDominationVictory() # Check for domination victory
     
