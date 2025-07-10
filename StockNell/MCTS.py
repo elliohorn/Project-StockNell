@@ -1,12 +1,14 @@
 import torch
-import numpy
+import numpy as np
 import math
+import random
 
 class MCTS:
-    def __init__(self, model, cPuct, numSims):
+    def __init__(self, model, cPuct, numSims, numActions):
         self.model = model      # This is the PVN
         self.cPuct = cPuct      # The exploration coefficent (higher means more, lower means less)
         self.numSims = numSims  # Number of loops of the MCTS algorithm
+        self.numActions = numActions
 
 
     ### This is the MCTS Algorithm: Selection -> Expansion -> Simulation -> Backpropagation
@@ -14,9 +16,12 @@ class MCTS:
         self.root = TreeNode()
         for _ in range(self.numSims):
             node, state = self.select(self.root, rootState)
-            value = self.expandAndEval(node, state)
+            if state.isTerminal() is not None:
+                value = state.isTerminal()
+            else:
+                value = self.expandAndEval(node, state)
             self.backup(node, value)
-        # Return all children's visit counts
+        # Return all children's visit counts        
         return {a: child.visCount for a, child in self.root.children.items()}
     
     ## MCTS Step 1: Selection
@@ -30,9 +35,10 @@ class MCTS:
             bestAction = None
             bestChild = None
 
+            noise = np.random.dirichlet([0.3]*self.numActions)
             for action, child in current.children.items():
                 Q = child.meanVal
-                P = child.prior
+                P = 0.75 * child.prior + 0.25*noise[action]
                 N = child.visCount
     
                 # PUCT Formula
@@ -54,13 +60,13 @@ class MCTS:
     ## MCTS Step 2 + 3: Expansion and Simulation
     def expandAndEval(self, node, state):
         legalMask = state.getLegalMask()
-        policy, value = self.model(torch.tensor(state), legalMask)
+        policy, value = self.model(state.stateToTensor(), legalMask)
 
         for action, prior in enumerate(policy):
             if legalMask[action]: # Check if the move is legal
                 # I think this is supposed to be a K-V Pair. Key: Action, Value: Node that action leads to
                 node.children[action] = TreeNode(parent=node, prior=prior) 
-        return value.item()
+        return value#.item()
         
 
     ## MCTS Step 4: Backpropagation

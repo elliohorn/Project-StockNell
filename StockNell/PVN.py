@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import copy
 from torch import nn
 from torchrl.envs.libs.gym import GymEnv
+# from SimpleAWEngine.Board import terrain_types
+# from SimpleAWEngine.Unit import unitTypes
 
 
 # Hyperparameters
@@ -15,6 +17,9 @@ channels = 18 + (25 * 2) + 1 + 1 + 1 + 1 # Num terrain types + (Num Units * Play
 # A sample state of the AW board would be the product of the channels (all possible needed inputs) * board height * board width
 emptyState = torch.zeros(channels * 8 * 8)
 # This state would be filled with all of the necessary data on the boad
+
+# TODO Make a numActions function
+#ALL_ACTIONS = get
 
 class PVN(nn.Module):
     def __init__(self, inChannels, boardSize, numActions, hiddenDim=128):
@@ -53,6 +58,14 @@ class PVN(nn.Module):
         value = torch.tanh(value).squeeze(-1) # Removes the Batch in B, C, H, W
 
         return policy, value
+
+# Dummy network used for testing the MCTS
+class DummyNet:
+    def __call__(self, x, mask):
+        # uniform priors, value=0
+        p = mask.float() / mask.sum(dim=-1, keepdim=True)
+        v = torch.zeros(x.shape[0])
+        return p, v
     
 ## TODO: Finish State class (including board.getLegalMovesForPlayer). The state encoding is most important
 class State:
@@ -67,13 +80,13 @@ class State:
     
     def getLegalMask(self):
         moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
-        mask = torch.zeros(self.numActions(), dtype=torch.bool)
+        mask = torch.zeros(self.numActions, dtype=torch.bool)
         mask[list(range(len(moves)))] = True
         return mask
     
-    def applyAction(self, actionIndex):
+    def applyAction(self, action):
         moves, costs = self.board.getLegalMovesForPlayer(self.currentPlayer)
-        x0,y0, x1,y1 = moves[actionIndex]
+        x0,y0, x1,y1 = moves[action]
         newBoard = copy.deepcopy(self.board)
         newBoard.moveUnit(x0, y0, x1, y1, moves, costs, self.game)
 
@@ -83,7 +96,91 @@ class State:
     def isTerminal(self):
         return self.game.checkVictory()
 
-    def toTensor(self):
+    def stateToTensor(self, board):
+        channels = []
+        H = board.height
+        W = board.width
         # This will be the encoding of the board.
-        pass
+        
+        # Terrain Encoding, 1 plane for each type
+        for terrainType in terrain_types:
+            mask = (board.grid == terrainType)
+            plane = mask.float()
+            channels.append(plane)
+
+        # Unit encoding, 1 plane per unit per player
+        for unitType in unitType:
+            for owner in (1, -1):
+                mask = torch.zeros(H, W)
+                for (x,y) in board.units.items():
+                    if u.unitType == unitType and u.owner == owner:
+                        mask[y,x] = 1.0
+                channels.append(mask)
+
+        # HP, Fuel, and Ammo planes, normalized to [0,1]
+        hpPlane = torch.zeros(H, W)
+        fuelPlane = torch.zeros(H, W)
+        ammoPlane = torch.zeros(H, W)
+        for (x,y), u in board.units.items():
+            hpPlane[y, x] = u.health / 100
+            fuelPlane[y, x] = u.unitType.fuel / u.unitType.fuelMax
+            ammoPlane[y, x] = u.unitType.ammo / u.unitType.ammoMax
+        channels.append(hpPlane)
+        channels.append(fuelPlane)
+        channels.append(ammoPlane)
+
+        # Player to Move plane, so the AI knows who's turn it is
+        ptmPlane = torch.full((H,W), 1.0 if self.currentPlayer == 1 else 0.0)
+        channels.append(ptmPlane)
+
+        # Return the final tensor
+        return torch.stack(channels, dim=0)
+
+# Dummy Tic-Tac-Toe State used to test MCTS
+class DummyTTTState:
+    def __init__(self, board=None, currentPlayer=1):
+        if board is None:
+            self.board = np.array([[0, 0, 0],
+                        [0, 0, 0],
+                        [0, 0, 0]])
+        else:
+            self.board = copy.deepcopy(board)
+        self.currentPlayer = currentPlayer
+
+    def getLegalMask(self):
+        moves = self.board[self.board == 0]
+        mask = torch.zeros(len(moves), dtype=torch.bool)
+        mask[list(range(len(moves)))] = True
+
+        return mask
+
+    def applyAction(self, action):
+        moves = self.board[self.board == 0]
+        chosenSquare = moves[action]
+        newBoard = copy.deepcopy(self.board)
+        newBoard[chosenSquare] = self.currentPlayer
+
+        return DummyTTTState(newBoard, -self.currentPlayer)
     
+    def isTerminal(self):
+        # Returns winner, 0 for draw, None for still playing
+        for row in self.board:
+            if row[0] != 0 and (row[0] == row[1] == row[2]):
+                return row[0]
+        
+        for col in range(3):
+            if self.board[0][col] != 0 and (self.board[0][col] == self.board[1][col] == self.board[2][col]):
+                return self.board[0][col]
+        
+        if self.board[0][0] != 0 and (self.board[0][0] == self.board[1][1] == self.board[2][2]):
+            return self.board[0][0]
+        if self.board[0][2] != 0 and (self.board[0][2] == self.board[1][1] == self.board[2][0]):
+            return self.board[0][2]
+        
+        if self.board[self.board == 0] is None:
+            return 0
+        
+        return None
+    
+    def stateToTensor(self):
+        return self.board.flatten()
