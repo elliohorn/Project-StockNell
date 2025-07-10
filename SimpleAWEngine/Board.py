@@ -389,6 +389,14 @@ class Board:
                 legal_moves.append(pos)
         return legal_moves, cost_so_far
     
+    def getLegalMovesForPlayer(self, currentPlayer):
+        myUnits = [u for u in self.units.values()
+                  if u.owner == currentPlayer]
+        
+        legalMoves = []
+        for unit in myUnits:
+            legalMoves.append(self.get_legal_moves(unit))
+
     def captureTargets(self, unit):
         at = self.grid[unit.y][unit.x]
        # print(at.name in {"City", "Base", "Airport", "Harbor", "HQ", "Com Tower", "Lab"})

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
+import copy
 from torch import nn
 from torchrl.envs.libs.gym import GymEnv
 
@@ -52,3 +53,37 @@ class PVN(nn.Module):
         value = torch.tanh(value).squeeze(-1) # Removes the Batch in B, C, H, W
 
         return policy, value
+    
+## TODO: Finish State class (including board.getLegalMovesForPlayer). The state encoding is most important
+class State:
+    def __init__(self, game, currentPlayer):
+        self.game = game
+        self.board = copy.deepcopy(game.board)
+        self.currentPlayer = currentPlayer
+
+    def getLegalActions(self):
+        moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        return list(range(len(moves)))
+    
+    def getLegalMask(self):
+        moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        mask = torch.zeros(self.numActions(), dtype=torch.bool)
+        mask[list(range(len(moves)))] = True
+        return mask
+    
+    def applyAction(self, actionIndex):
+        moves, costs = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        x0,y0, x1,y1 = moves[actionIndex]
+        newBoard = copy.deepcopy(self.board)
+        newBoard.moveUnit(x0, y0, x1, y1, moves, costs, self.game)
+
+        return State(newBoard, -self.currentPlayer)
+    
+    # Checks for a win condition and returns the winner
+    def isTerminal(self):
+        return self.game.checkVictory()
+
+    def toTensor(self):
+        # This will be the encoding of the board.
+        pass
+    
