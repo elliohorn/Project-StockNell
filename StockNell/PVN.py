@@ -4,8 +4,12 @@ import torch.nn.functional as F
 import copy
 from torch import nn
 from torchrl.envs.libs.gym import GymEnv
-# from SimpleAWEngine.Board import terrain_types
-# from SimpleAWEngine.Unit import unitTypes
+
+import sys, os
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+sys.path.insert(0, PROJECT_ROOT)
+from SimpleAWEngine.Board import terrain_types
+from SimpleAWEngine.Unit import unitTypes
 
 
 # Hyperparameters
@@ -43,9 +47,9 @@ class PVN(nn.Module):
 
     def forward(self, state, legalMask=None):
         state = F.relu(self.convTrunk(state))
-        batch, chnls, h, w = state.shape
+        chnls, h, w = state.shape
 
-        flatten = state.view(batch, chnls * h * w)
+        flatten = state.view(chnls * h * w)
 
         # Policy
         logits = self.policyHead(flatten)
@@ -69,10 +73,11 @@ class DummyNet:
     
 ## TODO: Finish State class (including board.getLegalMovesForPlayer). The state encoding is most important
 class State:
-    def __init__(self, game, currentPlayer):
+    def __init__(self, game, currentPlayer, numActions):
         self.game = game
         self.board = copy.deepcopy(game.board)
         self.currentPlayer = currentPlayer
+        self.numActions = numActions
 
     def getLegalActions(self):
         moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
@@ -86,7 +91,11 @@ class State:
     
     def applyAction(self, action):
         moves, costs = self.board.getLegalMovesForPlayer(self.currentPlayer)
-        x0,y0, x1,y1 = moves[action]
+        moveTuple = moves[action]
+        x0 = moveTuple[0]
+        y0 = moveTuple[1]
+        x1 = moveTuple[2][0]
+        y1 = moveTuple[2][1]
         newBoard = copy.deepcopy(self.board)
         newBoard.moveUnit(x0, y0, x1, y1, moves, costs, self.game)
 
@@ -104,15 +113,20 @@ class State:
         
         # Terrain Encoding, 1 plane for each type
         for terrainType in terrain_types:
+            x = terrainType
             mask = (board.grid == terrainType)
-            plane = mask.float()
+            planeData = [[1.0 if board.grid[y][x] is terrainType else 0.0
+                            for x in range(W)]
+                                for y in range(H)]
+            
+            plane = torch.tensor(planeData, dtype=torch.float32)
             channels.append(plane)
 
         # Unit encoding, 1 plane per unit per player
-        for unitType in unitType:
+        for unitType in unitTypes:
             for owner in (1, -1):
                 mask = torch.zeros(H, W)
-                for (x,y) in board.units.items():
+                for (x,y), u in board.units.items():
                     if u.unitType == unitType and u.owner == owner:
                         mask[y,x] = 1.0
                 channels.append(mask)
@@ -132,7 +146,6 @@ class State:
         # Player to Move plane, so the AI knows who's turn it is
         ptmPlane = torch.full((H,W), 1.0 if self.currentPlayer == 1 else 0.0)
         channels.append(ptmPlane)
-
         # Return the final tensor
         return torch.stack(channels, dim=0)
 
@@ -182,5 +195,5 @@ class DummyTTTState:
         
         return None
     
-    def stateToTensor(self):
+    def stateToTensor(self, board=None):
         return self.board.flatten()

@@ -1,5 +1,5 @@
 # from SimpleAWEngine.DamageTable import DAMAGE_TABLE 
-from DamageTable import DAMAGE_TABLE
+from .DamageTable import DAMAGE_TABLE
 
 import random
 import copy

@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import math
 import random
+import copy
+from PVN import State
 
 class MCTS:
     def __init__(self, model, cPuct, numSims, numActions):
@@ -12,18 +14,70 @@ class MCTS:
 
 
     ### This is the MCTS Algorithm: Selection -> Expansion -> Simulation -> Backpropagation
-    def run(self, rootState):
+    def run(self, rootState, board):
         self.root = TreeNode()
         for _ in range(self.numSims):
             node, state = self.select(self.root, rootState)
             if state.isTerminal() is not None:
                 value = state.isTerminal()
             else:
-                value = self.expandAndEval(node, state)
+                value = self.expandAndEval(node, state, board)
             self.backup(node, value)
         # Return all children's visit counts        
         return {a: child.visCount for a, child in self.root.children.items()}
     
+    def runSelfPlay(self, game, numGames):
+        examples = []
+        for _ in range(numGames):
+            state = State(copy.deepcopy(game), currentPlayer=1, numActions=self.numActions)
+            trajectory = []
+            moveIdx = 0
+        
+
+            while not state.isTerminal():
+                mask = state.getLegalMask()
+
+                mcts = self
+                counts = mcts.run(state, game.board)
+
+                total = sum(counts.values())
+                piStar = torch.zeros_like(mask, dtype=torch.float32)
+                for a, n in counts.items():
+                    piStar[a] = n / total
+
+                stateTensor = state.stateToTensor(copy.deepcopy(game.board))
+                trajectory.append((stateTensor, piStar, mask))
+
+                # Scales the temperature with the number of moves made (get greedier over time)
+                if moveIdx < 10:
+                    tau = 1.0
+                elif moveIdx < 20:
+                    tau = 0.5
+                else:
+                    tau = 0.0
+
+                action = mcts.sampleFromPI(piStar, temperature=tau)
+
+                state = state.applyAction(action)
+                moveIdx += 1
+
+            z = state.isTerminal()
+
+            for (stateTensor, piStar, mask) in trajectory:
+                examples.append((stateTensor, piStar, z, mask))
+        
+        return examples
+    
+    def sampleFromPI(piStar, temperature):
+        if temperature <= 0:
+            # Greedy exploitation
+            return int(torch.argmax(piStar).item())
+        
+        # Exploration (scaling probabilities) using 1 / Temperature
+        scaled = np.pow(piStar, 1.0 / temperature)
+        probs = scaled / scaled.sum()
+        return int(np.random.choice(len(piStar), p=probs))
+
     ## MCTS Step 1: Selection
     def select(self, node, state):
         current = node
@@ -58,9 +112,9 @@ class MCTS:
 
 
     ## MCTS Step 2 + 3: Expansion and Simulation
-    def expandAndEval(self, node, state):
+    def expandAndEval(self, node, state, board):
         legalMask = state.getLegalMask()
-        policy, value = self.model(state.stateToTensor(), legalMask)
+        policy, value = self.model(state.stateToTensor(board), legalMask)
 
         for action, prior in enumerate(policy):
             if legalMask[action]: # Check if the move is legal

@@ -1,7 +1,7 @@
 # from SimpleAWEngine.Board import Board
 # from SimpleAWEngine.Unit import unitTypes
-from Board import Board
-from Unit import Unit, unitTypes
+from .Board import Board
+from .Unit import Unit, unitTypes
 import csv
 import re
 import heapq

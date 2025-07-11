@@ -1,5 +1,5 @@
 # from SimpleAWEngine.Unit import Unit
-from Unit import Unit
+from .Unit import Unit
 import heapq
 import copy
 from typing import List, Tuple, Dict, Any
@@ -44,7 +44,7 @@ terrain_types = {
     'SH': TerrainType('Shoal', 1,1,1,1,1,10,10,10, False,defenseBonus=0),
     'RE': TerrainType('Reef', 10,10,10,10,1,2,2,10, False,defenseBonus=1),  
     'C': TerrainType('City', 1,1,1,1,1,10,10,10, True,defenseBonus=3),
-    'B': TerrainType('Base', 1,1,1,1,1,10,10,1, True,defenseBonus=3, produces=True),
+    'BA': TerrainType('Base', 1,1,1,1,1,10,10,1, True,defenseBonus=3, produces=True),
     'A': TerrainType('Airport', 1,1,1,1,1,10,10,10, True,defenseBonus=3, produces=True), 
     'H': TerrainType('Harbor', 1,1,1,1,1,1,1,10, True,defenseBonus=3, produces=True),
     'HQ': TerrainType('HQ', 1,1,1,1,1,10,10,10, True,defenseBonus=4),
@@ -394,8 +394,13 @@ class Board:
                   if u.owner == currentPlayer]
         
         legalMoves = []
+        legalMoveCosts = []
         for unit in myUnits:
-            legalMoves.append(self.get_legal_moves(unit))
+            unitLegalMoves, moveCosts = self.get_legal_moves(unit)
+            legalMoves.append((unit.x, unit.y, unitLegalMoves))
+            legalMoveCosts.append(moveCosts)
+
+        return legalMoves, moveCosts
 
     def captureTargets(self, unit):
         at = self.grid[unit.y][unit.x]

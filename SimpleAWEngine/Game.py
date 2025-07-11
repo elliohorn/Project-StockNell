@@ -1,9 +1,9 @@
 # from SimpleAWEngine.Board import Board
 # from SimpleAWEngine.Unit import Unit, unitTypes
 # from SimpleAWEngine.CO import CO, COs, POWERS_LOOKUP
-from Board import Board
-from Unit import Unit, unitTypes
-from CO import CO
+from .Board import Board
+from .Unit import Unit, unitTypes
+from .CO import CO
 import random
 from collections import deque
 
