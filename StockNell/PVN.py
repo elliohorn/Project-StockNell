@@ -91,15 +91,28 @@ class State:
     
     def applyAction(self, action):
         moves, costs = self.board.getLegalMovesForPlayer(self.currentPlayer)
-        moveTuple = moves[action]
-        x0 = moveTuple[0]
-        y0 = moveTuple[1]
-        x1 = moveTuple[2][0]
-        y1 = moveTuple[2][1]
-        newBoard = copy.deepcopy(self.board)
-        newBoard.moveUnit(x0, y0, x1, y1, moves, costs, self.game)
 
-        return State(newBoard, -self.currentPlayer)
+        # Flattening the moves and costs arrays into arrays of (x0,y0,x1,y1) 4-Tuples
+        flatMoves = []
+        flatCosts = []
+        for (x0, y0, destList), costList in zip(moves, costs):
+            if not destList:
+                flatMoves.append((x0, y0, x0, y0))
+                flatCosts.append(0)
+            else:
+                for (x1, y1), cost in zip(destList, costList):
+                    flatMoves.append((x0, y0, x1, y1))
+                    flatCosts.append(cost)
+
+
+        x0, y0, x1, y1 = flatMoves[action]
+
+        newBoard = copy.deepcopy(self.board)
+        newBoard.moveUnit(x0, y0, x1, y1, moves[action][2], costs, self.game)
+
+        game = copy.deepcopy(self.game)
+        game.board = copy.deepcopy(newBoard)
+        return State(game, -self.currentPlayer, self.numActions)
     
     # Checks for a win condition and returns the winner
     def isTerminal(self):

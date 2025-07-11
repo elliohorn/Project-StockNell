@@ -232,6 +232,13 @@ class Board:
     def moveUnit(self, fromX: int, fromY: int, toX: int, toY: int, legalMoves, moveCosts, game):
         if (fromX, fromY) not in self.units:
             raise ValueError(f"No unit at starting point {(fromX, fromY)}")
+        
+        if (fromX == toX and fromY == toY):
+            unit = self.units[(toX, toY)]
+            unit.movement = 0
+            unit.attackAvailable = 0
+            return
+        
         if (toX, toY) in self.units:
             unitAtTile = self.units[(toX, toY)]
             unit = self.units[(fromX, fromY)]
@@ -328,7 +335,6 @@ class Board:
         Returns a list of (x,y) coordinates the unit can move to,
         based on its remaining movement points and terrain costs.
         """
-        print(f"Board Dims {self.width}, {self.height}")
         start = (unit.x, unit.y)
         max_mp = unit.movement
 
@@ -398,7 +404,7 @@ class Board:
         for unit in myUnits:
             unitLegalMoves, moveCosts = self.get_legal_moves(unit)
             legalMoves.append((unit.x, unit.y, unitLegalMoves))
-            legalMoveCosts.append(moveCosts)
+            legalMoveCosts.append((unit.x, unit.y, moveCosts))
 
         return legalMoves, moveCosts
 

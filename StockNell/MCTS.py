@@ -56,7 +56,7 @@ class MCTS:
                 else:
                     tau = 0.0
 
-                action = mcts.sampleFromPI(piStar, temperature=tau)
+                action = mcts.sampleFromPI(piStar, tau)
 
                 state = state.applyAction(action)
                 moveIdx += 1
@@ -68,7 +68,7 @@ class MCTS:
         
         return examples
     
-    def sampleFromPI(piStar, temperature):
+    def sampleFromPI(self, piStar, temperature):
         if temperature <= 0:
             # Greedy exploitation
             return int(torch.argmax(piStar).item())

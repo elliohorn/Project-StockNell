@@ -190,7 +190,7 @@ class Unit:
         
     def joinUnits(self, destUnit, game):
         unitToJoin = self
-        if unitToJoin.unitType.unitName != destUnit.unitType.unitName:
+        if unitToJoin.unitType.unitName != destUnit.unitType.unitName and unitToJoin.owner != destUnit.owner and (destUnit.x != unitToJoin.x) and (destUnit.y != unitToJoin.y):
             return
         if unitToJoin.health + destUnit.health > 100:
             surplus = unitToJoin.health + destUnit.health - 100
