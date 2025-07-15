@@ -253,7 +253,7 @@ class Board:
         
         unit = self.units.pop((fromX, fromY))
         #legalMoves, moveCosts = self.get_legal_moves(unit)
-        print(f"Legal Moves: {legalMoves}")
+        #print(f"Legal Moves: {legalMoves}")
         moveCost = moveCosts[(toX, toY)]
         if (toX, toY) not in legalMoves or unit.unitType.fuel < moveCost:
             raise ValueError(f"Illegal move to {(toX, toY)}")
@@ -417,7 +417,7 @@ class Board:
             return True
         return False
     
-    def get_attack_targets(self, unit):
+    def getAttackTargets(self, unit):
         """
         Returns list of enemy units adjacent to this unit.
         """

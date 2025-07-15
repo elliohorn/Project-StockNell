@@ -128,15 +128,14 @@ class Unit:
     def attack(self, defender, game, minLuck=0, maxLuck=9):
         board = game.board
         attacker = self
-        x = game.getCO(self.owner).name
         if game.getCO(self.owner * -1).name == "Sonja" and game.getCO(self.owner * -1).powerStage == 2:
             # If counter break is active, we switch who is attacking
             temp = defender
             defender = attacker
             attacker = temp
-        print("Attacking!")
+        #print("Attacking!")
         if attacker.unitType.ammo <= 0:
-            print("Unit is out of ammo!")
+            #print("Unit is out of ammo!")
             return None
         # if ((attacker.unitType.minRange == 0 and not board.get_attack_targets(attacker)) # Check within direct rane
         #     or (attacker.unitType.minRange != 0 and not board.get_attack_targets(attacker, defender))): # Check within indir range
@@ -181,12 +180,13 @@ class Unit:
                 if game.getCO(defender.owner).powerStage == 0: game.getCO(defender.owner).gainMeter(defenderValueDamaged)
 
             if attacker.health <= 0:
-                print("Unit lost attacking!")
+                #print("Unit lost attacking!")
                 board.removeUnit(attacker, attacker.x, attacker.y)
-            print(f"Attacker: {attacker.health}, Defender: {defender.health}")
+            #print(f"Attacker: {attacker.health}, Defender: {defender.health}")
             return attackerValueDamaged
         else:
-            print("Unit unable to attack!")
+            pass
+            #print("Unit unable to attack!")
         
     def joinUnits(self, destUnit, game):
         unitToJoin = self

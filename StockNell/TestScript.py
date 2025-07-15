@@ -1,5 +1,5 @@
 import torch
-from PVN import PVN, DummyNet, DummyTTTState
+from PVN import PVN, DummyNet, DummyTTTState, ALL_ACTIONS
 from MCTS import MCTS
 import sys, os
 
@@ -14,14 +14,14 @@ batchSize = 5
 # numChannels = numTerrainTypes + (2 * numUnitTypes) + HP + Fuel + Ammo (all 1) + PlayerToMove
 inChannels = 18 + (25 * 2) + 1 + 1 + 1 + 1
 boardSize = (1,4)
-numActionsAWBW = 8 * 8 * 10  
+numActionsAWBW = len(ALL_ACTIONS)
 numActionsTTT = 9
 
 network = PVN(inChannels, boardSize, numActionsAWBW)
 mctsSimple = MCTS(DummyNet(), cPuct=1.0, numSims=1000, numActions=9)
-mctsComplex = MCTS(network, cPuct=1.0, numSims=10, numActions=numActionsAWBW)
-initialTTTState = DummyTTTState()
-counts = mctsSimple.run(initialTTTState, initialTTTState.board)
+mctsComplex = MCTS(network, cPuct=1.0, numSims=2, numActions=numActionsAWBW)
+# initialTTTState = DummyTTTState()
+# counts = mctsSimple.run(initialTTTState, initialTTTState.board, initialTTTState.getLegalMask())
 
 terrain_codes = [[('HQ',1),('P',0),('P', 0), ('HQ', -1)]]
 startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
@@ -43,5 +43,5 @@ policy, value = network(dummyState)
 
 print(f"{policy.shape} compared to {(batchSize, numActionsAWBW)}")
 print(f"{value.shape} compared to {(batchSize)}")
-print(f"Sum: {sum(counts.values())}")
-print(counts)
+# print(f"Sum: {sum(counts.values())}")
+# print(counts)

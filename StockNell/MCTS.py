@@ -14,14 +14,14 @@ class MCTS:
 
 
     ### This is the MCTS Algorithm: Selection -> Expansion -> Simulation -> Backpropagation
-    def run(self, rootState, board):
+    def run(self, rootState, board, legalMask):
         self.root = TreeNode()
         for _ in range(self.numSims):
-            node, state = self.select(self.root, rootState)
+            node, state = self.select(self.root, copy.deepcopy(rootState))
             if state.isTerminal() is not None:
                 value = state.isTerminal()
             else:
-                value = self.expandAndEval(node, state, board)
+                value = self.expandAndEval(node, state, board, legalMask)
             self.backup(node, value)
         # Return all children's visit counts        
         return {a: child.visCount for a, child in self.root.children.items()}
@@ -38,7 +38,7 @@ class MCTS:
                 mask = state.getLegalMask()
 
                 mcts = self
-                counts = mcts.run(state, game.board)
+                counts = mcts.run(state, game.board, mask)
 
                 total = sum(counts.values())
                 piStar = torch.zeros_like(mask, dtype=torch.float32)
@@ -69,14 +69,39 @@ class MCTS:
         return examples
     
     def sampleFromPI(self, piStar, temperature):
+        if isinstance(piStar, torch.Tensor):
+            pi = piStar.detach().cpu().numpy().astype(np.float64)
+        else:
+            pi = np.array(piStar, dtype=np.float64)
+
+
         if temperature <= 0:
             # Greedy exploitation
-            return int(torch.argmax(piStar).item())
-        
+            return int(pi.argmax())
+    
         # Exploration (scaling probabilities) using 1 / Temperature
-        scaled = np.pow(piStar, 1.0 / temperature)
-        probs = scaled / scaled.sum()
-        return int(np.random.choice(len(piStar), p=probs))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            scaled = np.power(pi, 1.0 / temperature)
+
+        total = scaled.sum()
+
+        if total <= 0 or not np.isfinite(total):
+            # Fallback: uniform over all positive‐prob moves,
+            # or over all moves if none positive
+            mask = pi > 0
+            if not mask.any():
+                mask = np.ones_like(pi, dtype=bool)
+            probs = mask.astype(np.float64)
+            probs /= probs.sum()
+        else:
+            probs = scaled / total
+
+        probsSum = probs.sum()
+        if probsSum <= 0 or not np.isfinite(probsSum):
+            raise RuntimeError(f"Cannot normalize probs, sum={probsSum}")
+        probs /= probsSum
+
+        return int(np.random.choice(len(probs), p=probs))
 
     ## MCTS Step 1: Selection
     def select(self, node, state):
@@ -112,8 +137,8 @@ class MCTS:
 
 
     ## MCTS Step 2 + 3: Expansion and Simulation
-    def expandAndEval(self, node, state, board):
-        legalMask = state.getLegalMask()
+    def expandAndEval(self, node, state, board, legalMask):
+       #legalMask = state.getLegalMask()
         policy, value = self.model(state.stateToTensor(board), legalMask)
 
         for action, prior in enumerate(policy):

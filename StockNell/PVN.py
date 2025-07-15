@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import copy
 from torch import nn
 from torchrl.envs.libs.gym import GymEnv
+from Action import Action, ActionType
 
 import sys, os
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -14,16 +15,20 @@ from SimpleAWEngine.Unit import unitTypes
 
 # Hyperparameters
 device = "mps" if torch.mps.is_available() else "cpu"
+WIDTH = 8
+HEIGHT = 8
 
 #baseEnv = GymEnv("StockNellAISimulation-v0", device) # This is a reinforcement learning environment
 
 channels = 18 + (25 * 2) + 1 + 1 + 1 + 1 # Num terrain types + (Num Units * Players) + HP/Fuel/Ammo Channel + Current Player Channel
 # A sample state of the AW board would be the product of the channels (all possible needed inputs) * board height * board width
-emptyState = torch.zeros(channels * 8 * 8)
+emptyState = torch.zeros(channels * WIDTH * HEIGHT)
 # This state would be filled with all of the necessary data on the boad
 
 # TODO Make a numActions function
-#ALL_ACTIONS = get
+ALL_ACTIONS = Action.buildAllActions(WIDTH, HEIGHT)
+actionToIndex = {act: i for i, act in enumerate(ALL_ACTIONS)}
+END_TURN_IDX = len(ALL_ACTIONS) - 1
 
 class PVN(nn.Module):
     def __init__(self, inChannels, boardSize, numActions, hiddenDim=128):
@@ -80,39 +85,145 @@ class State:
         self.numActions = numActions
 
     def getLegalActions(self):
+        actions = []
+
+        # Failsafe: If there aren't any units that can move, then there are no legal moves
+        for (x0, y0), unit in self.board.units.items():
+            if unit.movement > 0 or unit.attackAvailable == True:
+                break
+            return actions
+
         moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
-        return list(range(len(moves)))
+        for x0, y0, legalDests in moves:
+            for dest in legalDests:
+                actions.append(Action(ActionType.MOVE, (x0, y0), (dest[0], dest[1])))
+        
+        for (x0, y0), unit in self.board.units.items():
+            if unit.owner != self.currentPlayer or (unit.movement == 0 and unit.attackAvailable == False):
+                continue
+
+            for target in self.board.getAttackTargets(unit):
+                actions.append(Action(ActionType.ATTACK, (x0, y0), (target.x, target.y)))
+
+            if self.board.captureTargets(unit):
+                actions.append(Action(ActionType.CAPTURE, (x0, y0), None))
+            
+            if unit.unitType.stealthable:
+                actions.append(Action(ActionType.STEALTH, (x0, y0), None))
+            
+            if unit.unitType.transportCapacity > 0 and unit.loaded:
+                for (unlX, unlY) in self.board.getAdjacentPositions(unit, 0):
+                    actions.append(Action(ActionType.UNLOAD, (x0, y0), (unlX, unlY)))
+
+            if unit.attackAvailable == True and unit.movement > 0:
+                actions.append(Action(ActionType.WAIT, (x0, y0), (x0, y0)))
+
+        return actions
+
+        # moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        # return list(range(len(moves)))
     
     def getLegalMask(self):
-        moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        # moves, _ = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        # mask = torch.zeros(self.numActions, dtype=torch.bool)
+        # mask[list(range(len(moves)))] = True
         mask = torch.zeros(self.numActions, dtype=torch.bool)
-        mask[list(range(len(moves)))] = True
+
+        legal = set(self.getLegalActions())
+
+        for idx, action in enumerate(ALL_ACTIONS):
+            if action in legal:
+                mask[idx] = True
+
+        if not legal:
+            mask[END_TURN_IDX] = True
+    
         return mask
     
     def applyAction(self, action):
-        moves, costs = self.board.getLegalMovesForPlayer(self.currentPlayer)
+        # actions = self.getLegalActions()
+        # act = actions[action]
+        act = ALL_ACTIONS[action]
 
-        # Flattening the moves and costs arrays into arrays of (x0,y0,x1,y1) 4-Tuples
-        flatMoves = []
-        flatCosts = []
-        for (x0, y0, destList), costList in zip(moves, costs):
-            if not destList:
-                flatMoves.append((x0, y0, x0, y0))
-                flatCosts.append(0)
-            else:
-                for (x1, y1), cost in zip(destList, costList):
-                    flatMoves.append((x0, y0, x1, y1))
-                    flatCosts.append(cost)
-
-
-        x0, y0, x1, y1 = flatMoves[action]
+        legal = set(self.getLegalActions())
+        # If there are no legal moves, you must end your turn
+        if legal is None or len(legal) == 0:
+            act = Action(ActionType.END_TURN, None, None)
+        elif act not in legal:
+            return self
 
         newBoard = copy.deepcopy(self.board)
-        newBoard.moveUnit(x0, y0, x1, y1, moves[action][2], costs, self.game)
+        if act.actor is not None:
+            x0, y0 = act.actor
+        if act.target is not None:
+            x1, y1 = act.target
 
+        match act.type:
+            case ActionType.MOVE:
+                moves, costs = newBoard.get_legal_moves(newBoard.units[(x0,y0)])
+                newBoard.moveUnit(x0,y0,x1,y1, moves, costs, self.game)
+
+            case ActionType.ATTACK:
+                newBoard.units[(x0,y0)].attack(newBoard.units[(x1,y1)], self.game) # Add Luck modifiers later (COs don't work with this implementation yet)
+
+            case ActionType.CAPTURE:
+                newBoard.units[(x0,y0)].capture(newBoard)
+
+            case ActionType.STEALTH:
+                unit = newBoard.units[(x0, y0)]
+                if unit.unitType.isStealthed:
+                    unit.unitType.isStelathed = False
+                else:
+                    unit.unitType.isStelathed = True
+
+            case ActionType.UNLOAD:
+                transport = newBoard.units[x0,y0]
+                newBoard.unloadUnit(transport, x1, y1)
+
+            # Wait does nothing, but for completeness I left it in here
+            case ActionType.WAIT:
+                pass
+
+            case ActionType.END_TURN:
+                print("Applied action AttackType.END_TURN")
+                game = copy.deepcopy(self.game)
+                game.board = copy.deepcopy(newBoard)
+                game.endTurn()
+                return State(game, -self.currentPlayer, self.numActions)
+
+            case _:
+                raise ValueError(f"Unknown action type {act.type}")
+            
+        print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which targets {x1, y1}")
         game = copy.deepcopy(self.game)
         game.board = copy.deepcopy(newBoard)
-        return State(game, -self.currentPlayer, self.numActions)
+        return State(game, self.currentPlayer, self.numActions)
+                
+    # The old apply action that can only handle movement
+    # def applyAction(self, action):
+    #     moves, costs = self.board.getLegalMovesForPlayer(self.currentPlayer)
+
+    #     # Flattening the moves and costs arrays into arrays of (x0,y0,x1,y1) 4-Tuples
+    #     flatMoves = []
+    #     flatCosts = []
+    #     for (x0, y0, destList), costList in zip(moves, costs):
+    #         if not destList:
+    #             flatMoves.append((x0, y0, x0, y0))
+    #             flatCosts.append(0)
+    #         else:
+    #             for (x1, y1), cost in zip(destList, costList):
+    #                 flatMoves.append((x0, y0, x1, y1))
+    #                 flatCosts.append(cost)
+
+
+    #     x0, y0, x1, y1 = flatMoves[action]
+
+    #     newBoard = copy.deepcopy(self.board)
+    #     newBoard.moveUnit(x0, y0, x1, y1, moves[action][2], costs, self.game)
+
+    #     game = copy.deepcopy(self.game)
+    #     game.board = copy.deepcopy(newBoard)
+    #     return State(game, -self.currentPlayer, self.numActions)
     
     # Checks for a win condition and returns the winner
     def isTerminal(self):

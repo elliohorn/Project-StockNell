@@ -369,13 +369,13 @@ class Game:
                 unit.attackAvailable = True
                 if unit.disabled: unit.disabled = False
             
-
+        self.currentPlayer *= -1
         ## FOG UPDATE GOES HERE WHEN IMPLEMENTED
         # self.board.updateVisibility(self.currentPlayer)
-        print("Turn over")
+        #print("Turn over")
         winner = self.checkVictory()
         if winner is not None:
-            print(f"Player {winner} wins!")
+            #print(f"Player {winner} wins!")
             return True
         return False
     
