@@ -303,7 +303,7 @@ class Game:
                 self.weather = "CLEAR"
         self.currentPlayer *= -1
 
-    def productionStep(self, inputType):
+    def productionStep(self, inputType, unitCode=None):
         for y in range(self.board.height):
             for x in range(self.board.width):
                 terrain = self.board.getTerrain(x, y)
@@ -339,6 +339,18 @@ class Game:
                         except Exception as e:
                             print("Not a unit!")
                             unitToBuild = None
+                else:
+                    if self.funds[self.currentPlayer] >= unitTypes.get(unitCode).value:
+                        if ((unitTypes.get(unitCode).moveType == "Sea" and terrain.name == "Harbor") or # Naval unit at harbor
+                                (unitTypes.get(unitCode).moveType == "Air" and terrain.name == "Airport") or  # Air unit at airport
+                                ((unitTypes.get(unitCode).moveType != "Sea" and unitTypes.get(unitCode).moveType != "Air") and terrain.name == "Base")): # Land unit at base
+                            
+                            self.funds[self.currentPlayer] -= unitTypes.get(unitCode).value
+                            newUnit = Unit(self.currentPlayer,unitTypes.get(unitCode))
+                            self.board.addUnit(newUnit, x, y, False)
+
+
+
 
     def resupplyCheck(self, unit, modifier=0):
         if unit.unitType.transportsUnits:

@@ -57,7 +57,7 @@ class CO:
     def scopAvailable(self):
         return self.coStars > self.scopStars
 
-    def activate_co(self, game):
+    def activateCO(self, game):
         if self.coStars > self.copStars:
             self.coMeter -= self.copStars * 5000
             self.powerStage = 1
@@ -66,7 +66,7 @@ class CO:
             elif self.coPower is not None:
                 self.coPower(self, game)
 
-    def activate_super(self, game):
+    def activateSuper(self, game):
         if self.coStars > self.scopStars:
             self.coMeter = 0
             self.powerStage = 2

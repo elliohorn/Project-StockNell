@@ -66,6 +66,7 @@ class MCTS:
             for (stateTensor, piStar, mask) in trajectory:
                 examples.append((stateTensor, piStar, z, mask))
         
+        print(f"Terminal state reached {state.isTerminal()}")
         return examples
     
     def sampleFromPI(self, piStar, temperature):

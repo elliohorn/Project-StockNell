@@ -23,13 +23,12 @@ mctsComplex = MCTS(network, cPuct=1.0, numSims=2, numActions=numActionsAWBW)
 # initialTTTState = DummyTTTState()
 # counts = mctsSimple.run(initialTTTState, initialTTTState.board, initialTTTState.getLegalMask())
 
-terrain_codes = [[('HQ',1),('P',0),('P', 0), ('HQ', -1)]]
+terrain_codes = [[('BA',1),('HQ',1),('HQ', -1), ('BA', -1)]]
 startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
                  (Unit(-1,unitTypes.get('INF')), 3, 0)]
 
 game = Game(terrain_codes, terrain_types, player1CO=COs.get("Andy"), player2CO=COs.get("Andy"), startingUnits=startingUnits)
 ex = mctsComplex.runSelfPlay(game=game, numGames=1)
-print(ex)
 s, pi, z, mask = ex[0]
 print(s.shape)
 print(pi.shape)
@@ -37,11 +36,11 @@ print(mask.shape)
 print (z in (-1, 0, 1))
 
 
-dummyState = torch.randn(batchSize, inChannels, *boardSize)
+# dummyState = torch.randn(batchSize, inChannels, *boardSize)
 
-policy, value = network(dummyState)
+# policy, value = network(dummyState)
 
-print(f"{policy.shape} compared to {(batchSize, numActionsAWBW)}")
-print(f"{value.shape} compared to {(batchSize)}")
+# print(f"{policy.shape} compared to {(batchSize, numActionsAWBW)}")
+# print(f"{value.shape} compared to {(batchSize)}")
 # print(f"Sum: {sum(counts.values())}")
 # print(counts)

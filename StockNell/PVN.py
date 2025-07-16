@@ -117,6 +117,30 @@ class State:
 
             if unit.attackAvailable == True and unit.movement > 0:
                 actions.append(Action(ActionType.WAIT, (x0, y0), (x0, y0)))
+        
+        for (x0, y0), terrain in self.board.buildings.items():
+            if (x0,y0) not in self.board.units and terrain.canProduce() and terrain.owner == self.currentPlayer:
+                match terrain.name:
+                    case "Base":
+                        for ut in unitTypes:
+                            if (unitTypes.get(ut).moveType != "Sea" and unitTypes.get(ut).moveType != "Air" and unitTypes.get(ut).value <= self.game.funds[self.currentPlayer]): 
+                                actions.append(Action(ActionType.BUILD_UNIT, (x0, y0), (ut,)))
+                    case "Airport":
+                        for ut in unitTypes:
+                            if (unitTypes.get(ut).moveType == "Air" and unitTypes.get(ut).value <= self.game.funds[self.currentPlayer]): 
+                                actions.append(Action(ActionType.BUILD_UNIT, (x0, y0), (ut,)))
+                    case "Harbor":
+                        for ut in unitTypes:
+                            if (unitTypes.get(ut).moveType == "Sea" and unitTypes.get(ut).value <= self.game.funds[self.currentPlayer]): 
+                                actions.append(Action(ActionType.BUILD_UNIT, (x0, y0), (ut,)))
+
+
+        if self.game.getCO(self.currentPlayer).copAvailable():
+            actions.append(Action(ActionType.ACTIVATE_POWER, None, None))
+
+        if self.game.getCO(self.currentPlayer).scopAvailable():
+            actions.append(Action(ActionType.ACTIVATE_SUPER, None, None))
+        
 
         return actions
 
@@ -152,19 +176,26 @@ class State:
         elif act not in legal:
             return self
 
+        newGame = copy.deepcopy(self.game)
         newBoard = copy.deepcopy(self.board)
+        newGame.board = newBoard  
+        x0, y0, x1, y1, unitCode = [None] * 5   
+        
         if act.actor is not None:
             x0, y0 = act.actor
         if act.target is not None:
-            x1, y1 = act.target
+            if act.type != ActionType.BUILD_UNIT:
+                x1, y1 = act.target
+            else:
+                unitCode = act.target[0]
 
         match act.type:
             case ActionType.MOVE:
                 moves, costs = newBoard.get_legal_moves(newBoard.units[(x0,y0)])
-                newBoard.moveUnit(x0,y0,x1,y1, moves, costs, self.game)
+                newBoard.moveUnit(x0,y0,x1,y1, moves, costs, newGame)
 
             case ActionType.ATTACK:
-                newBoard.units[(x0,y0)].attack(newBoard.units[(x1,y1)], self.game) # Add Luck modifiers later (COs don't work with this implementation yet)
+                newBoard.units[(x0,y0)].attack(newBoard.units[(x1,y1)], newGame) # Add Luck modifiers later (COs don't work with this implementation yet)
 
             case ActionType.CAPTURE:
                 newBoard.units[(x0,y0)].capture(newBoard)
@@ -180,24 +211,35 @@ class State:
                 transport = newBoard.units[x0,y0]
                 newBoard.unloadUnit(transport, x1, y1)
 
+            case ActionType.BUILD_UNIT:
+                newGame.productionStep(inputType=0, unitCode=unitCode)
+
+            case ActionType.ACTIVATE_POWER:
+                newGame.getCO(self.currentPlayer).activateCO(newGame)
+
+            case ActionType.ACTIVATE_SUPER:
+                newGame.getCO(self.currentPlayer).activateSuper(newGame)
+
             # Wait does nothing, but for completeness I left it in here
             case ActionType.WAIT:
-                pass
+                moves, costs = newBoard.get_legal_moves(newBoard.units[(x0,y0)])
+                newBoard.moveUnit(x0,y0,x0,y0, moves, costs, newGame)
 
             case ActionType.END_TURN:
                 print("Applied action AttackType.END_TURN")
-                game = copy.deepcopy(self.game)
-                game.board = copy.deepcopy(newBoard)
-                game.endTurn()
-                return State(game, -self.currentPlayer, self.numActions)
+                finalGame = copy.deepcopy(newGame)
+                finalGame.board = copy.deepcopy(newBoard)
+                finalGame.endTurn()
+                return State(finalGame, -self.currentPlayer, self.numActions)
 
             case _:
                 raise ValueError(f"Unknown action type {act.type}")
             
-        print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which targets {x1, y1}")
-        game = copy.deepcopy(self.game)
-        game.board = copy.deepcopy(newBoard)
-        return State(game, self.currentPlayer, self.numActions)
+        if x1 is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which targets {x1, y1}")
+        elif unitCode is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which built {unitCode}")
+        finalGame = copy.deepcopy(newGame)
+        finalGame.board = copy.deepcopy(newBoard)
+        return State(finalGame, self.currentPlayer, self.numActions)
                 
     # The old apply action that can only handle movement
     # def applyAction(self, action):
