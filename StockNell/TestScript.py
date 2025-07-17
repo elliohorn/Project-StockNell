@@ -13,9 +13,22 @@ from SimpleAWEngine.CO import COs
 batchSize = 5
 # numChannels = numTerrainTypes + (2 * numUnitTypes) + HP + Fuel + Ammo (all 1) + PlayerToMove
 inChannels = 18 + (25 * 2) + 1 + 1 + 1 + 1
-boardSize = (1,4)
 numActionsAWBW = len(ALL_ACTIONS)
 numActionsTTT = 9
+
+# terrain_codes = [[('BA',1),('HQ',1),('HQ', -1), ('BA', -1)]]
+terrain_codes = [
+    #      0      1      2      3      4      5      6       7
+    [('A', 1), ('CM', -1), ('P', 0), ('F', 0), ('S', 0), ('S', 0), ('H', -1), ('HQ', -1)],
+    [('P', 0), ('M', 0), ('P', 0), ('F', 0), ('SH', 0), ('S', 0), ('M', 0),  ('P', 0 )],
+    [('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('BA', -1)],
+    [('C', 0), ('P', 0), ('P', 0), ('C', 0), ('C', 0), ('R', 0), ('R', 0),  ('R', 0 )],
+    [('R', 0), ('R', 0), ('R', 0), ('C', 0), ('C', 0), ('P', 0), ('P', 0),  ('C', 0 )],
+    [('BA', 1), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('P', 0 )],
+    [('P', 0), ('M', 0), ('S', 0), ('SH',0), ('F', 0), ('P', 0), ('M', 0),  ('P', 0 )],
+    [('HQ',1), ('H', 1), ('S', 0), ('S', 0), ('F', 0), ('P', 0), ('P', 0),  ('A', -1)]
+]
+boardSize = (len(terrain_codes), len(terrain_codes[0]))
 
 network = PVN(inChannels, boardSize, numActionsAWBW)
 mctsSimple = MCTS(DummyNet(), cPuct=1.0, numSims=1000, numActions=9)
@@ -23,11 +36,13 @@ mctsComplex = MCTS(network, cPuct=1.0, numSims=2, numActions=numActionsAWBW)
 # initialTTTState = DummyTTTState()
 # counts = mctsSimple.run(initialTTTState, initialTTTState.board, initialTTTState.getLegalMask())
 
-terrain_codes = [[('BA',1),('HQ',1),('HQ', -1), ('BA', -1)]]
-startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
-                 (Unit(-1,unitTypes.get('INF')), 3, 0)]
 
-game = Game(terrain_codes, terrain_types, player1CO=COs.get("Andy"), player2CO=COs.get("Andy"), startingUnits=startingUnits)
+startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 7), 
+                 (Unit(-1,unitTypes.get('INF')), 7, 0)]
+
+game = Game(terrain_codes, terrain_types, player1CO=COs.get("Sami"), player2CO=COs.get("Andy"), startingUnits=startingUnits)
+game.getCO(1).gainMeter(50000)
+game.getCO(-1).gainMeterç(50000)
 ex = mctsComplex.runSelfPlay(game=game, numGames=1)
 s, pi, z, mask = ex[0]
 print(s.shape)

@@ -36,7 +36,6 @@ class MCTS:
 
             while not state.isTerminal():
                 mask = state.getLegalMask()
-
                 mcts = self
                 counts = mcts.run(state, game.board, mask)
 

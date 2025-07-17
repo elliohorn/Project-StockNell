@@ -41,10 +41,10 @@ class Action:
                 actions.append(Action(ActionType.CAPTURE, (x0, y0), None))
                 actions.append(Action(ActionType.STEALTH, (x0, y0), None))
                 actions.append(Action(ActionType.WAIT, (x0, y0), (x0, y0)))
-                actions.append(Action(ActionType.END_TURN, None, None))
 
 
         actions.append(Action(ActionType.ACTIVATE_POWER, None, None))
         actions.append(Action(ActionType.ACTIVATE_SUPER, None, None))
+        actions.append(Action(ActionType.END_TURN, None, None))
         
         return actions

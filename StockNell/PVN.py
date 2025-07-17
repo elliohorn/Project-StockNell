@@ -78,11 +78,13 @@ class DummyNet:
     
 ## TODO: Finish State class (including board.getLegalMovesForPlayer). The state encoding is most important
 class State:
-    def __init__(self, game, currentPlayer, numActions):
+    def __init__(self, game, currentPlayer, numActions, applyDailyEffects=False):
         self.game = game
         self.board = copy.deepcopy(game.board)
         self.currentPlayer = currentPlayer
         self.numActions = numActions
+        if applyDailyEffects:
+            self.game.dailyEffects()
 
     def getLegalActions(self):
         actions = []
@@ -154,7 +156,6 @@ class State:
         mask = torch.zeros(self.numActions, dtype=torch.bool)
 
         legal = set(self.getLegalActions())
-
         for idx, action in enumerate(ALL_ACTIONS):
             if action in legal:
                 mask[idx] = True
@@ -169,7 +170,10 @@ class State:
         # act = actions[action]
         act = ALL_ACTIONS[action]
 
+        ### TODO: The error is caused by CO powers always being legal, so it never appends end turn.
+        ### Either find a way to append end turn, or figure out why the algorithm isn't using its power.
         legal = set(self.getLegalActions())
+        print(legal)
         # If there are no legal moves, you must end your turn
         if legal is None or len(legal) == 0:
             act = Action(ActionType.END_TURN, None, None)
@@ -195,7 +199,11 @@ class State:
                 newBoard.moveUnit(x0,y0,x1,y1, moves, costs, newGame)
 
             case ActionType.ATTACK:
-                newBoard.units[(x0,y0)].attack(newBoard.units[(x1,y1)], newGame) # Add Luck modifiers later (COs don't work with this implementation yet)
+                attacker = newBoard.units[(x0,y0)]
+                defender = newBoard.units[(x1,y1)]
+                fundsToAdd = attacker.attack(defender, newGame,  newGame.getCO(attacker.owner).luckLowerBound, newGame.getCO(attacker.owner).luckUpperBound, newGame.getCO(defender.owner).luckLowerBound, newGame.getCO(defender.owner).luckUpperBound)
+                if newGame.getCO(self.currentPlayer).name == "Sasha" and newGame.getCO(self.currentPlayer).powerStage == 2 and fundsToAdd is not None:
+                    newGame.funds[self.currentPlayer] += 0.50 * fundsToAdd
 
             case ActionType.CAPTURE:
                 newBoard.units[(x0,y0)].capture(newBoard)
@@ -226,17 +234,22 @@ class State:
                 newBoard.moveUnit(x0,y0,x0,y0, moves, costs, newGame)
 
             case ActionType.END_TURN:
-                print("Applied action AttackType.END_TURN")
+                # print("Applied action AttackType.END_TURN")
                 finalGame = copy.deepcopy(newGame)
                 finalGame.board = copy.deepcopy(newBoard)
                 finalGame.endTurn()
-                return State(finalGame, -self.currentPlayer, self.numActions)
+                finalGame.weatherStep(finalGame.weather != "CLEAR")
+                # print(f"The weather is currently {finalGame.weather} with {finalGame.weatherTimer} turns left")
+                # print(f"Player 1: {finalGame.funds[1]}, Player 2: {finalGame.funds[-1]}")
+                return State(finalGame, -self.currentPlayer, self.numActions, applyDailyEffects=True)
 
             case _:
                 raise ValueError(f"Unknown action type {act.type}")
             
-        if x1 is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which targets {x1, y1}")
-        elif unitCode is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which built {unitCode}")
+        # if x1 is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which targets {x1, y1}")
+        # elif unitCode is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which built {unitCode}")
+        #elif act.type == ActionType.ATTACK:print(f"Applied action {act.type}, actor is unit {newBoard.units[(x0,y0)].unitType.unitName} on {(x0, y0)} which targets {x1, y1}")
+        print(newBoard)
         finalGame = copy.deepcopy(newGame)
         finalGame.board = copy.deepcopy(newBoard)
         return State(finalGame, self.currentPlayer, self.numActions)

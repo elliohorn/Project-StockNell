@@ -125,7 +125,7 @@ class Unit:
     def getAttackBoost(self, game):
         return 100 + self.getComBoost(game) + self.attackModifier + self.terrainDependentBoosts(self.x, self.y, game) + (10 if game.getCO(self.owner).powerStage in (1, 2) else 0)
 
-    def attack(self, defender, game, minLuck=0, maxLuck=9):
+    def attack(self, defender, game, atkMinLuck=0, atkMaxLuck=9, defMinLuck=0, defMaxLuck=9):
         board = game.board
         attacker = self
         if game.getCO(self.owner * -1).name == "Sonja" and game.getCO(self.owner * -1).powerStage == 2:
@@ -150,7 +150,7 @@ class Unit:
             defenseBonus = board.getDefenseBonus(defender, defender.x, defender.y, game) + (1 if game.getCO(defender.owner).powerStage in (1, 2) else 0)
             attackBonus = attacker.getAttackBoost(game)
             #damage = int(((base * attackBonus)/100 + random.randint(minLuck, maxLuck)) * attacker.health/100  *  (200 - (defender.defenseModifier + (10 * defenseBonus) * (defender.health/10)))/100) #((100 - (10 * defenseBonus + defender.defenseModifier))/100))
-            damage = int((base * (attackBonus/100) * (attacker.health/100) + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
+            damage = int((base * (attackBonus/100) * (attacker.health/100) + random.randint(atkMinLuck, atkMaxLuck)) * ((100 - (10 * defenseBonus + defender.defenseModifier))/100))
             defender.health -= damage
             attacker.unitType.ammo -= 1
             
@@ -169,7 +169,7 @@ class Unit:
                 defenseBonus = board.getDefenseBonus(attacker, attacker.x, attacker.y, game) + (1 if game.getCO(attacker.owner).powerStage in (1, 2) else 0)
                 attackBonus = defender.getAttackBoost(game)
                 #damage = int(((base * attackBonus * defender.counterModifier)/100 + random.randint(minLuck, maxLuck)) * defender.health/100  *  (200 - (attacker.defenseModifier + (10 * defenseBonus) * (attacker.health/10)))/100)
-                damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(minLuck, maxLuck)) * ((100 - (10 * defenseBonus + attacker.defenseModifier))/100))
+                damage = int((base * (attackBonus/100) * (defender.health/100) * defender.counterModifier + random.randint(defMinLuck, defMaxLuck)) * ((100 - (10 * defenseBonus + attacker.defenseModifier))/100))
                 attacker.health -= damage
                 defender.unitType.ammo -= 1
 

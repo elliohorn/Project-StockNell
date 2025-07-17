@@ -283,16 +283,16 @@ class Board:
 
     def canLoad(self, transport, unit):
         if transport.unitType.unitName != "LAN" and (unit.unitType.unitName != "INF" and unit.unitType.unitName != "MEC"):
-            print(f"This transport {transport.unitType.unitName} is unable to transport {unit.unitType.unitName}!")
+            #print(f"This transport {transport.unitType.unitName} is unable to transport {unit.unitType.unitName}!")
             return False
         elif transport.unitType.unitName == "LAN" and (unit.unitType.moveType == "AIR" or unit.unitType.moveType == "SEA" or unit.unitType.moveType == "LANDER" or unit.unitType.moveType == "PIPE"):
-            print("This lander can only transport ground units!")
+            #print("This lander can only transport ground units!")
             return False
         elif transport.unitType.unitName == "CRS" and (unit.unitType.unitName != "TCP" or unit.unitType.unitName != "BCP"):
-            print("This cruiser can only transport copter units!")
+            #print("This cruiser can only transport copter units!")
             return False
         elif transport.unitType.unitName == "CAR" and (unit.unitType.unitName != "STE" or unit.unitType.unitName != "FIG" or unit.unitType.unitName != "BOM"):
-            print("This carrier can only transport plane units!")
+            #print("This carrier can only transport plane units!")
             return False
         return True
         
@@ -406,7 +406,7 @@ class Board:
             legalMoves.append((unit.x, unit.y, unitLegalMoves))
             legalMoveCosts.append((unit.x, unit.y, moveCosts))
 
-        return legalMoves, moveCosts
+        return legalMoves, legalMoveCosts
 
     def captureTargets(self, unit):
         at = self.grid[unit.y][unit.x]
@@ -423,14 +423,14 @@ class Board:
         """
         targets = []
         # Direct check
-        if unit.unitType.minRange == 0:
+        if unit.unitType.minRange == 0 and len(unit.unitType.damageTable) != 0:
             for dx,dy in [(-1,0),(1,0),(0,-1),(0,1)]:
                 x2, y2 = unit.x+dx, unit.y+dy
                 if (x2,y2) in self.units:
                     other = self.units[(x2,y2)]
                     if other.owner != unit.owner:
                         targets.append(other)
-        else: # Indirect check
+        elif unit.unitType.minRange != 0 and len(unit.unitType.damageTable) != 0: # Indirect check
             start = (unit.x, unit.y)
             frontier = [(0, start)]
             distanceSearched = 0
@@ -507,11 +507,11 @@ class Board:
         captureModifier = None
         indirBonus = None
         type = modifiers[3].strip(")").strip("'")
-        print(f"MODS: {modifiers}")
+        # print(f"MODS: {modifiers}")
         if len(modifiers) == 5 and type == "INF": captureModifier = float(modifiers[4].strip(")"))
         elif len(modifiers) == 5 and type == "INDIRECT": indirBonus = int(modifiers[4].strip(")"))
         #print(f"{type} == 'DIRECT' {type == 'DIRECT'}")
-        print(repr(type), repr('DIRECT'))
+        # print(repr(type), repr('DIRECT'))
         match type:
             case 'INF':
                 for unit in myUnits: 
@@ -520,7 +520,7 @@ class Board:
                         self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
                         if captureModifier is not None: unit.unitType.captureBonus = captureModifier
             case 'DIRECT': # Direct always excludes footsoldiers
-                print(myUnits)
+                # print(myUnits)
                 for unit in myUnits:
                     moveType = unit.unitType.moveType
                     if unit.unitType.minRange == 0 and moveType != "INF" and moveType != "MEC": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
@@ -576,7 +576,7 @@ class Board:
         return self.render(player=1)
 
     def render(self, player: int) -> str:
-        lines = []
+        lines = ["***************************************\n"]
         for y in range(self.height):
             cells = []
             for x in range(self.width):
@@ -595,10 +595,10 @@ terrain_codes = [
     #      0      1      2      3      4      5      6       7
     [('A', 1), ('CM', -1), ('P', 0), ('F', 0), ('S', 0), ('S', 0), ('H', -1), ('HQ', -1)],
     [('P', 0), ('M', 0), ('P', 0), ('F', 0), ('SH', 0), ('S', 0), ('M', 0),  ('P', 0 )],
-    [('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('B', -1)],
+    [('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('BA', -1)],
     [('C', 0), ('P', 0), ('P', 0), ('C', 0), ('C', 0), ('R', 0), ('R', 0),  ('R', 0 )],
     [('R', 0), ('R', 0), ('R', 0), ('C', 0), ('C', 0), ('P', 0), ('P', 0),  ('C', 0 )],
-    [('B', 1), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('P', 0 )],
+    [('BA', 1), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('P', 0 )],
     [('P', 0), ('M', 0), ('S', 0), ('SH',0), ('F', 0), ('P', 0), ('M', 0),  ('P', 0 )],
     [('HQ',1), ('H', 1), ('S', 0), ('S', 0), ('F', 0), ('P', 0), ('P', 0),  ('A', -1)]
 ]

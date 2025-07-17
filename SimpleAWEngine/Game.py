@@ -118,6 +118,41 @@ class Game:
                             terrain.landerMoveCost = int(terrain.landerMoveCost * 0.5)
                     terrain.airMoveCost = int(terrain.airMoveCost * 0.5)
 
+    # Copy of the start of playTurn() so that the MCTS self-play algorithm can use these daily updates
+    def dailyEffects(self):
+        self.collectIncome()
+        if self.weather != "CLEAR":
+            self.weatherEffects()
+        if self.getCO(self.currentPlayer).powerStage != 0:
+            self.getCO(self.currentPlayer).resetPowers(self)
+
+        myUnits = [u for u in self.board.units.values()
+                  if u.owner == self.currentPlayer]
+        
+        for unit in myUnits:
+            if self.getCO(self.currentPlayer).name == "Rachel":
+                self.resupplyCheck(unit, modifier = 1)
+            else:
+                self.resupplyCheck(unit)
+            if unit.unitType.stealthable and unit.unitType.isStealthed:
+                if self.getCO(self.currentPlayer).name == "Eagle":
+                    unit.unitType.fuel -= unit.unitType.stealthBurn - 2
+                else:
+                    unit.unitType.fuel -= unit.unitType.stealthBurn
+            elif unit.unitType.fuelBurn != 0:
+                if self.getCO(self.currentPlayer).name == "Eagle":
+                    unit.unitType.fuel -= unit.unitType.fuelBurn - 2
+                else:
+                    unit.unitType.fuel -= unit.unitType.fuelBurn
+
+    # Another set of playTurn() functionalized for the MCTS self-play loop to use
+    def weatherStep(self, weatherChanged):
+        if self.weather != "CLEAR" and weatherChanged:
+            self.resetWeather()
+        if self.weatherTimer != 0: 
+            self.weatherTimer -= 1
+            if self.weatherTimer == 0:
+                self.weather = "CLEAR"
 
     def playTurn(self, inputType=0, FOW=False):
         self.collectIncome()
@@ -142,12 +177,12 @@ class Game:
                 self.resupplyCheck(unit)
             if unit.unitType.stealthable and unit.unitType.isStealthed:
                 if self.getCO(self.currentPlayer).name == "Eagle":
-                    unit.unitType.fuel -= unit.unitType.stealthBurn + 2
+                    unit.unitType.fuel -= unit.unitType.stealthBurn - 2
                 else:
                     unit.unitType.fuel -= unit.unitType.stealthBurn
             elif unit.unitType.fuelBurn != 0:
                 if self.getCO(self.currentPlayer).name == "Eagle":
-                    unit.unitType.fuel -= unit.unitType.fuelBurn + 2
+                    unit.unitType.fuel -= unit.unitType.fuelBurn - 2
                 else:
                     unit.unitType.fuel -= unit.unitType.fuelBurn
         
