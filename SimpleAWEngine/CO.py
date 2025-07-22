@@ -60,6 +60,7 @@ class CO:
     def activateCO(self, game):
         if self.coStars > self.copStars:
             self.coMeter -= self.copStars * 5000
+            self.coStars -= self.copStars
             self.powerStage = 1
             if self.copKey is not None:
                 self.basicPower(POWERS_LOOKUP.get(self.copKey), game)
@@ -69,6 +70,7 @@ class CO:
     def activateSuper(self, game):
         if self.coStars > self.scopStars:
             self.coMeter = 0
+            self.coStars = 0
             self.powerStage = 2
             if self.scopKey is not None:
                 self.basicPower(POWERS_LOOKUP.get(self.scopKey), game)

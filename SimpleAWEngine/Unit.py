@@ -161,7 +161,7 @@ class Unit:
             if game.getCO(attacker.owner).powerStage == 0: game.getCO(attacker.owner).gainMeter(attackerValueDamaged)
 
             if defender.health <= 0:
-                print("Unit destroyed!")
+                # print("Unit destroyed!")
                 board.removeUnit(defender, defender.x, defender.y)
             elif attacker.unitType.minRange == 0 and defender.unitType.minRange == 0 and defender.unitType.ammo > 0: # Counter
 

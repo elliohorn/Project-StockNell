@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn.functional as F
 import copy
 from torch import nn
-from torchrl.envs.libs.gym import GymEnv
+#from torchrl.envs.libs.gym import GymEnv
 from Action import Action, ActionType
 
 import sys, os
@@ -173,7 +173,7 @@ class State:
         ### TODO: The error is caused by CO powers always being legal, so it never appends end turn.
         ### Either find a way to append end turn, or figure out why the algorithm isn't using its power.
         legal = set(self.getLegalActions())
-        print(legal)
+        #print(legal)
         # If there are no legal moves, you must end your turn
         if legal is None or len(legal) == 0:
             act = Action(ActionType.END_TURN, None, None)
@@ -249,7 +249,7 @@ class State:
         # if x1 is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which targets {x1, y1}")
         # elif unitCode is not None: print(f"Applied action {act.type}, actor is unit on {(x0, y0)} which built {unitCode}")
         #elif act.type == ActionType.ATTACK:print(f"Applied action {act.type}, actor is unit {newBoard.units[(x0,y0)].unitType.unitName} on {(x0, y0)} which targets {x1, y1}")
-        print(newBoard)
+        #print(newBoard)
         finalGame = copy.deepcopy(newGame)
         finalGame.board = copy.deepcopy(newBoard)
         return State(finalGame, self.currentPlayer, self.numActions)

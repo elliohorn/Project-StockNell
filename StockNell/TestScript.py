@@ -42,7 +42,7 @@ startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 7),
 
 game = Game(terrain_codes, terrain_types, player1CO=COs.get("Sami"), player2CO=COs.get("Andy"), startingUnits=startingUnits)
 game.getCO(1).gainMeter(50000)
-game.getCO(-1).gainMeterç(50000)
+game.getCO(-1).gainMeter(50000)
 ex = mctsComplex.runSelfPlay(game=game, numGames=1)
 s, pi, z, mask = ex[0]
 print(s.shape)
