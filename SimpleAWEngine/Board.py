@@ -1,18 +1,19 @@
-import Unit
+# from SimpleAWEngine.Unit import Unit
+from .Unit import Unit
 import heapq
 import copy
 from typing import List, Tuple, Dict, Any
 from pprint import pprint
 
 class TerrainType:
-    def __init__(self, name, infMoveCost, mecMoveCost, treadMoveCost, tireMoveCost, airMoveCost, boatMoveCost, landerMoveCost, prnMoveCost, capturable, defenseBonus, produces = None, owner=None):
+    def __init__(self, name, infMoveCost, mecMoveCost, treadMoveCost, tireMoveCost, airMoveCost, seaMoveCost, landerMoveCost, prnMoveCost, capturable, defenseBonus, produces = None, owner=None):
         self.name          = name            # e.g. 'Plains', 'Forest'
         self.infMoveCost     = infMoveCost       # MP cost to enter
         self.mecMoveCost     = mecMoveCost
         self.treadMoveCost     = treadMoveCost
         self.tireMoveCost     = tireMoveCost
         self.airMoveCost     = airMoveCost
-        self.boatMoveCost     = boatMoveCost
+        self.seaMoveCost     = seaMoveCost
         self.landerMoveCost     = landerMoveCost
         self.prnMoveCost     = prnMoveCost
         self.capturable = capturable
@@ -43,7 +44,7 @@ terrain_types = {
     'SH': TerrainType('Shoal', 1,1,1,1,1,10,10,10, False,defenseBonus=0),
     'RE': TerrainType('Reef', 10,10,10,10,1,2,2,10, False,defenseBonus=1),  
     'C': TerrainType('City', 1,1,1,1,1,10,10,10, True,defenseBonus=3),
-    'B': TerrainType('Base', 1,1,1,1,1,10,10,1, True,defenseBonus=3, produces=True),
+    'BA': TerrainType('Base', 1,1,1,1,1,10,10,1, True,defenseBonus=3, produces=True),
     'A': TerrainType('Airport', 1,1,1,1,1,10,10,10, True,defenseBonus=3, produces=True), 
     'H': TerrainType('Harbor', 1,1,1,1,1,1,1,10, True,defenseBonus=3, produces=True),
     'HQ': TerrainType('HQ', 1,1,1,1,1,10,10,10, True,defenseBonus=4),
@@ -63,6 +64,7 @@ class Board:
         self.height = len(terrainCodes)
         self.width  = len(terrainCodes[0]) if self.height>0 else 0
         self.fog = FOW
+        self.flatMoveCost = False
 
         # Build a 2D grid of TerrainType objects
         # self.grid = [
@@ -110,27 +112,34 @@ class Board:
         return self.grid[y][x].owner
 
     def getMoveCost(self, x, y, unitType):
-        match unitType:
-            case "INF":
-                return self.grid[y][x].infMoveCost
-            case "MEC":
-                return self.grid[y][x].mecMoveCost
-            case "TIRE":
-                return self.grid[y][x].tireMoveCost
-            case "TREAD":
-                return self.grid[y][x].treadMoveCost
-            case "AIR":
-                return self.grid[y][x].airMoveCost
-            case "SEA":
-                return self.grid[y][x].seaMoveCost
-            case "LANDER":
-                return self.grid[y][x].labderMoveCost
-            case "PIPE":
-                return self.grid[y][x].prnMoveCost
+        if self.flatMoveCost == True:
+            return 1
+        else:
+            match unitType:
+                case "INF":
+                    return self.grid[y][x].infMoveCost
+                case "MEC":
+                    return self.grid[y][x].mecMoveCost
+                case "TIRE":
+                    return self.grid[y][x].tireMoveCost
+                case "TREAD":
+                    return self.grid[y][x].treadMoveCost
+                case "AIR":
+                    return self.grid[y][x].airMoveCost
+                case "SEA":
+                    return self.grid[y][x].seaMoveCost
+                case "LANDER":
+                    return self.grid[y][x].landerMoveCost
+                case "PIPE":
+                    return self.grid[y][x].prnMoveCost
 
-    def getDefenseBonus(self, x, y):
-        return self.grid[y][x].defenseBonus
+    def getDefenseBonus(self, unit, x, y, game):
+        if game.getCO(unit.owner).name == "Lash" and game.getCO(unit.owner).powerStage == 2: 
+            return self.grid[y][x].defenseBonus * 2
+        else:
+            return self.grid[y][x].defenseBonus
     
+
     def unitIsVisible(self, unit, viewer: int) -> bool:
         # 1) If it’s the same side, always show your own troops
         if unit.owner == viewer:
@@ -208,21 +217,43 @@ class Board:
         if not moveFirstTurn:
             unit.movement = 0
             unit.attackAvailable = False
+    
+    def setUnitHP(self, x : int, y : int, amount : int):
+        if (x,y) not in self.units:
+            return
+        self.units[(x,y)].health = amount
+
 
     def removeUnit(self, unit: Unit, x: int, y: int):
         if (x,y) not in self.units:
             raise ValueError(f"Square {(x,y)} already empty") 
         self.units.pop((x,y))
 
-    def moveUnit(self, fromX: int, fromY: int, toX: int, toY: int, legalMoves, moveCosts):
+    def moveUnit(self, fromX: int, fromY: int, toX: int, toY: int, legalMoves, moveCosts, game):
         if (fromX, fromY) not in self.units:
             raise ValueError(f"No unit at starting point {(fromX, fromY)}")
+        
+        if (fromX == toX and fromY == toY):
+            unit = self.units[(toX, toY)]
+            unit.movement = 0
+            unit.attackAvailable = 0
+            return
+        
         if (toX, toY) in self.units:
-            raise ValueError(f"Destination occupied at {(toX, toY)}")
+            unitAtTile = self.units[(toX, toY)]
+            unit = self.units[(fromX, fromY)]
+            # Handles joining and transport loading
+            if unit.unitType.unitName == unitAtTile.unitType.unitName:
+                unit.joinUnits(unitAtTile, game)
+            if unitAtTile.unitType.transportsUnits and unitAtTile.unitType.transportCapacity > 0:
+                self.loadUnit(unitAtTile, unit)
+            return            
+
+            #raise ValueError(f"Destination occupied at {(toX, toY)}")
         
         unit = self.units.pop((fromX, fromY))
         #legalMoves, moveCosts = self.get_legal_moves(unit)
-        print(f"Legal Moves: {legalMoves}")
+        #print(f"Legal Moves: {legalMoves}")
         moveCost = moveCosts[(toX, toY)]
         if (toX, toY) not in legalMoves or unit.unitType.fuel < moveCost:
             raise ValueError(f"Illegal move to {(toX, toY)}")
@@ -240,8 +271,8 @@ class Board:
         if len(transport.loaded) >= transport.unitType.transportCapacity:
             raise ValueError("Transport full")
         
-        if (unit.x, unit.y) != (transport.x, transport.y):
-            raise ValueError("Unit must move onto the transport tile to load")
+        # if (unit.x, unit.y) != (transport.x, transport.y):
+        #     raise ValueError("Unit must move onto the transport tile to load")
         
         if self.canLoad(transport, unit):
             # remove from board
@@ -252,16 +283,16 @@ class Board:
 
     def canLoad(self, transport, unit):
         if transport.unitType.unitName != "LAN" and (unit.unitType.unitName != "INF" and unit.unitType.unitName != "MEC"):
-            print(f"This transport {transport.unitType.unitName} is unable to transport {unit.unitType.unitName}!")
+            #print(f"This transport {transport.unitType.unitName} is unable to transport {unit.unitType.unitName}!")
             return False
         elif transport.unitType.unitName == "LAN" and (unit.unitType.moveType == "AIR" or unit.unitType.moveType == "SEA" or unit.unitType.moveType == "LANDER" or unit.unitType.moveType == "PIPE"):
-            print("This lander can only transport ground units!")
+            #print("This lander can only transport ground units!")
             return False
         elif transport.unitType.unitName == "CRS" and (unit.unitType.unitName != "TCP" or unit.unitType.unitName != "BCP"):
-            print("This cruiser can only transport copter units!")
+            #print("This cruiser can only transport copter units!")
             return False
         elif transport.unitType.unitName == "CAR" and (unit.unitType.unitName != "STE" or unit.unitType.unitName != "FIG" or unit.unitType.unitName != "BOM"):
-            print("This carrier can only transport plane units!")
+            #print("This carrier can only transport plane units!")
             return False
         return True
         
@@ -304,7 +335,6 @@ class Board:
         Returns a list of (x,y) coordinates the unit can move to,
         based on its remaining movement points and terrain costs.
         """
-        print(f"Board Dims {self.width}, {self.height}")
         start = (unit.x, unit.y)
         max_mp = unit.movement
 
@@ -357,10 +387,27 @@ class Board:
                 # only allow if it’s your own transport
                 if other.owner == unit.owner and other.unitType.transportCapacity > 0 and self.canLoad(other, unit):
                     legal_moves.append(pos)
+                # allow the same unit types to stack for joining
+                if other.unitType.unitName == unit.unitType.unitName:
+                    legal_moves.append(pos)
+
             else:
                 legal_moves.append(pos)
         return legal_moves, cost_so_far
     
+    def getLegalMovesForPlayer(self, currentPlayer):
+        myUnits = [u for u in self.units.values()
+                  if u.owner == currentPlayer]
+        
+        legalMoves = []
+        legalMoveCosts = []
+        for unit in myUnits:
+            unitLegalMoves, moveCosts = self.get_legal_moves(unit)
+            legalMoves.append((unit.x, unit.y, unitLegalMoves))
+            legalMoveCosts.append((unit.x, unit.y, moveCosts))
+
+        return legalMoves, legalMoveCosts
+
     def captureTargets(self, unit):
         at = self.grid[unit.y][unit.x]
        # print(at.name in {"City", "Base", "Airport", "Harbor", "HQ", "Com Tower", "Lab"})
@@ -370,28 +417,42 @@ class Board:
             return True
         return False
     
-    def get_attack_targets(self, unit, indirTarget=None):
+    def getAttackTargets(self, unit):
         """
         Returns list of enemy units adjacent to this unit.
         """
         targets = []
         # Direct check
-        if not indirTarget:
+        if unit.unitType.minRange == 0 and len(unit.unitType.damageTable) != 0:
             for dx,dy in [(-1,0),(1,0),(0,-1),(0,1)]:
                 x2, y2 = unit.x+dx, unit.y+dy
                 if (x2,y2) in self.units:
                     other = self.units[(x2,y2)]
                     if other.owner != unit.owner:
                         targets.append(other)
-        else: # Indirect check
-            dx = abs(unit.x - indirTarget.x)
-            dy = abs(unit.y - indirTarget.y)
-            if (unit.unitType.minRange < dx + dy < unit.unitType.maxRange):
-                targets.append(indirTarget)
+        elif unit.unitType.minRange != 0 and len(unit.unitType.damageTable) != 0: # Indirect check
+            start = (unit.x, unit.y)
+            frontier = [(0, start)]
+            distanceSearched = 0
+            while frontier:
+                dist, (x, y) = heapq.heappop(frontier)
+                # Explore neighbors
+                for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+                    nx, ny = x + dx, y + dy
+                    distanceSearched = dist + 1
+                    if distanceSearched > unit.unitType.maxRange:
+                        continue
+                    heapq.heappush(frontier, (distanceSearched, (nx, ny)))
+                    if (nx, ny) not in self.units or (nx, ny) == start:
+                        continue
+                    distanceX = abs(unit.x - nx)
+                    distanceY = abs(unit.y - ny)
+                    if (unit.unitType.minRange < distanceX + distanceY < unit.unitType.maxRange and self.units[(nx, ny)].owner != unit.owner and self.units[(nx,ny)] not in targets):
+                        targets.append(self.units[(nx, ny)])
         return targets
     
     def reduceCapturePoints(self, unit):
-        self.grid[unit.y][unit.x].capturePoints -= int(unit.health / 10)
+        self.grid[unit.y][unit.x].capturePoints -= int(unit.health / 10 * (1 + unit.unitType.captureBonus))
         remainingPoints = self.grid[unit.y][unit.x].capturePoints
         if (remainingPoints <= 0):
             if self.grid[unit.y][unit.x].name == "HQ":
@@ -401,11 +462,121 @@ class Board:
                 print(f"Building at {(unit.x, unit.y)} captured!")
             self.grid[unit.y][unit.x].owner = unit.owner
     
+    def globalHPChange(self, owner, amount):
+        myUnits = [u for u in self.units.values()
+                  if u.owner == owner]
+        for unit in myUnits:
+            if unit.health - (amount * 10) <= 0: 
+                unit.health = 1
+            else:
+                unit.health += amount * 10
+            if unit.health > 100: 
+                unit.health = 100
+            
+
+    def globalValueChange(self, owner, discount):
+        myUnits = [u for u in self.units.values()
+                  if u.owner == owner]
+        for unit in myUnits:
+            unit.unitType.value *= discount
+            unit.unitType.value = int(unit.unitType.value)
+
+
+    def globalMovementChange(self, owner, amount):
+        """
+        This function exists for when the catch-all Unit Modifier can't handle a CO's power
+        AKA The Block Rock Exception, because THIS LITERALLY ONLY APPLIES TO JAKE
+        Everybody else plays nice and boosts the stats of the same unit type every time.
+        All except for Jake. JAKE, GO FUCK YOURSELF
+        """
+        myUnits = [u for u in self.units.values()
+                  if u.owner == owner]
+        for unit in myUnits:
+            moveType = unit.unitType.moveType
+            if moveType == "TREAD" or moveType == "TIRE":
+                if unit.movement != 0: unit.movement += amount
+
+    def globalUnitModifier(self, owner, modifiers):
+        if len(modifiers) == 1: return
+        myUnits = [u for u in self.units.values()
+                  if u.owner == owner]
+
+        attackAmount = int(modifiers[0].strip("("))
+        moveAmount = int(modifiers[1])
+        defenseAmount = int(modifiers[2])
+        captureModifier = None
+        indirBonus = None
+        type = modifiers[3].strip(")").strip("'")
+        # print(f"MODS: {modifiers}")
+        if len(modifiers) == 5 and type == "INF": captureModifier = float(modifiers[4].strip(")"))
+        elif len(modifiers) == 5 and type == "INDIRECT": indirBonus = int(modifiers[4].strip(")"))
+        #print(f"{type} == 'DIRECT' {type == 'DIRECT'}")
+        # print(repr(type), repr('DIRECT'))
+        match type:
+            case 'INF':
+                for unit in myUnits: 
+                    moveType = unit.unitType.moveType
+                    if moveType == "INF" or moveType == "MEC": 
+                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+                        if captureModifier is not None: unit.unitType.captureBonus = captureModifier
+            case 'DIRECT': # Direct always excludes footsoldiers
+                # print(myUnits)
+                for unit in myUnits:
+                    moveType = unit.unitType.moveType
+                    if unit.unitType.minRange == 0 and moveType != "INF" and moveType != "MEC": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case 'INDIRECT':
+                for unit in myUnits:
+                    if unit.unitType.minRange != 0:
+                        self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+                        if indirBonus is not None: unit.unitType.maxRange = unit.unitType.staticMax + indirBonus
+            case 'GROUND':
+                for unit in myUnits:
+                    moveType = unit.unitType.moveType
+                    if moveType == "TREAD" or moveType == "TIRE": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case 'AIR':
+                for unit in myUnits:
+                    if unit.unitType.moveType == "AIR": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case 'SEA':
+                for unit in myUnits:
+                    if unit.unitType.moveType == "SEA": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case 'COPTER':
+                for unit in myUnits:
+                    if unit.unitType.unitName == "BCP": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case 'TRANSPORT':
+                for unit in myUnits:
+                    if unit.unitType.transportsUnits == True and unit.movement != 0: unit.movement += moveAmount 
+            # case 'PLAINS': # Literally just Jake. These might not be necessary.
+            #     for unit in myUnits:
+            #         if self.getTerrain(unit.x, unit.y).name == "Plains": self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            # case 'PROPERTIES': # Just for Kindle
+            #     for unit in myUnits:
+            #         terName = self.getTerrain(unit.x, unit.y).name
+            #         if terName == "City" or terName == "Base" or terName == "Harbor" or terName == "HQ" or terName == "Airport" or terName == "Com Tower":
+            #             self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            # case 'ROADS': # Just for Koal
+            #     for unit in myUnits:
+            #         terName = self.getTerrain(unit.x, unit.y).name
+            #         if terName == "Road" or terName == "Bridge":
+            #             self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+            case 'ALL':
+                for unit in myUnits:
+                    self.setHelper(attackAmount, moveAmount, defenseAmount, unit)
+
+    def setHelper(self, attackAmount, moveAmount, defenseAmount, unit):
+        if attackAmount != 0: unit.attackModifier = attackAmount
+        if defenseAmount!= 0: unit.defenseModifier = defenseAmount
+        if unit.movement != 0: 
+            unit.movement += moveAmount
+
+            
+
+                
+    
     def __repr__(self):
         return self.render(player=1)
 
     def render(self, player: int) -> str:
-        lines = []
+        lines = ["***************************************\n"]
         for y in range(self.height):
             cells = []
             for x in range(self.width):
@@ -424,10 +595,10 @@ terrain_codes = [
     #      0      1      2      3      4      5      6       7
     [('A', 1), ('CM', -1), ('P', 0), ('F', 0), ('S', 0), ('S', 0), ('H', -1), ('HQ', -1)],
     [('P', 0), ('M', 0), ('P', 0), ('F', 0), ('SH', 0), ('S', 0), ('M', 0),  ('P', 0 )],
-    [('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('B', -1)],
+    [('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('BA', -1)],
     [('C', 0), ('P', 0), ('P', 0), ('C', 0), ('C', 0), ('R', 0), ('R', 0),  ('R', 0 )],
     [('R', 0), ('R', 0), ('R', 0), ('C', 0), ('C', 0), ('P', 0), ('P', 0),  ('C', 0 )],
-    [('B', 1), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('P', 0 )],
+    [('BA', 1), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0), ('P', 0),  ('P', 0 )],
     [('P', 0), ('M', 0), ('S', 0), ('SH',0), ('F', 0), ('P', 0), ('M', 0),  ('P', 0 )],
     [('HQ',1), ('H', 1), ('S', 0), ('S', 0), ('F', 0), ('P', 0), ('P', 0),  ('A', -1)]
 ]

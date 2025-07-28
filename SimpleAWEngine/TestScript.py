@@ -1,44 +1,61 @@
 from Unit import Unit, unitTypes
 from Game import Game
 from Board import Board, TerrainType, terrain_codes, terrain_types
+from CO import COs
 
 # minimal terrain_types & map
 
 #board = Board(terrain_codes, terrain_types, False)
 # create two units
-startingUnits = [
-    (Unit(1,unitTypes.get('APC')), 0, 3),# 'INF', 1, 3, 2, 100, 99, 1000)
-    (Unit(-1,unitTypes.get('TNK')), 2, 2),#, 'TREAD', -1, 6, 3, 100, 9, 7000)
-    (Unit(1,unitTypes.get('MEC')), 0, 0),# 'MEC', 1, 2, 2, 100, 99, 3000)
-]#     (Unit(1,unitTypes.get('MEC')), 6, 6),# 'MEC', 1, 2, 2, 100, 99, 3000)
-    #(Unit(-1,unitTypes.get('MEC')), 6, 7)]# 'MEC', 1, 2, 2, 100, 99, 3000)
-#     (Unit(1,unitTypes.get('MEC')), 7, 6),# 'MEC', 1, 2, 2, 100, 99, 3000)
-#     (Unit(1,unitTypes.get('MEC')), 7, 7),# 'MEC', 1, 2, 2, 100, 99, 3000)
-#     (Unit(1,unitTypes.get('MEC')), 4, 4)# 'MEC', 1, 2, 2, 100, 99, 3000)
-# ]
-
-game = Game(terrain_codes, terrain_types, startingUnits)
+# terrain_codes = [[('C',1),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('P',0),('P',0),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('HQ',1),('HQ',-1),('P',0),('P',0),('P',0), ('P',0), ('P',0), ('P',0)], 
+#                      [('CM',-1),('C',-1),('P',0),('P',0),('C',1), ('P',0), ('P',0), ('P',0)]]
+# startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+#                      (Unit(-1,unitTypes.get('INF')), 1, 0),
+#                      (Unit(1,unitTypes.get('INF')), 3, 0), 
+#                      (Unit(-1,unitTypes.get('INF')), 4, 0),
+#                      (Unit(1,unitTypes.get('INF')), 6, 0), 
+#                      (Unit(-1,unitTypes.get('INF')), 7, 0),
+#                      (Unit(1,unitTypes.get('TNK')), 0, 2),
+#                      (Unit(-1,unitTypes.get('TNK')), 1, 2),
+#                      (Unit(1,unitTypes.get('TNK')), 3, 2),
+#                      (Unit(-1,unitTypes.get('TNK')), 4, 2),
+#                      (Unit(1,unitTypes.get('TNK')), 6, 2),
+#                      (Unit(-1,unitTypes.get('TNK')), 7, 2),
+#                      (Unit(1,unitTypes.get('REC')), 7, 3),
+#                      (Unit(-1,unitTypes.get('INF')), 1, 4)]
+# startingUnits = [(Unit(1,unitTypes.get('TNK')), 0, 0),
+#                  (Unit(-1,unitTypes.get('INF')), 2, 0),
+#                  (Unit(-1,unitTypes.get('INF')), 2, 2),
+#                  (Unit(-1,unitTypes.get('INF')), 0, 2),
+#                  (Unit(-1,unitTypes.get('INF')), 4, 2),
+#                  (Unit(-1,unitTypes.get('INF')), 2, 4),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 0),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 1),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 2),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 3),
+#                  (Unit(-1,unitTypes.get('TNK')), 6, 4),
+#                  (Unit(-1,unitTypes.get('INF')), 7, 2)]
+terrain_codes = [[('P',0),('P',0),('P', 0), ('P', 0)]]
+startingUnits = [(Unit(1,unitTypes.get('INF')), 0, 0), 
+                     (Unit(1,unitTypes.get('INF')), 1, 0), 
+                     (Unit(1,unitTypes.get('APC')), 2, 0)]
+game = Game(terrain_codes, terrain_types, player1CO=COs.get("Von Bolt"), player2CO=COs.get("Olaf"), startingUnits=startingUnits)
+#game.funds[1] = 50000
+#game.getCO(1).gainMeter(200000)
+#game.getCO(-1).gainMeter(200000)
+#game.board.units[(3,0)].health = 50
 board = game.board
 
 print(board)
 
 game.playTurn(1)
 game.playTurn(1)
+game.playTurn(1)
 
 print(board)
-
-#### THINGS TO TEST:
-# 1. Transport loading, unloading, autoresupplying
-# 2. Resupply, both manual and automatic (including black boat healing)
-# 3. Presence of the boosting bug
-# 4. Fuel consumption is handled properly
-# 5. Test daily fuel burn
-
-#### THINGS LEFT TO IMPLEMENT:
-# 1. Define all the COs (this may take a while) and test behavior
-# 2. Modify the random input to include all the cases that Manual has
-# 3. Allow for attack modifiers (this will come with CO implementation)
-
 
 
 
