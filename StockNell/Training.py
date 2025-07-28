@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
@@ -67,14 +68,16 @@ def accuracyFNPolicy(preds, piStar):
 def accuracyFNValue(valuesTrue, valuePreds):
     return (valuePreds.sign() == valuesTrue.sign()).float().mean()
 
-def trainModel(model, lossFN, opt, device, scheduler, accuracyFNPolicy, accuracyFNValue, mcts, game, numSelfPlayGames, startEpoch, endEpoch=10):
+def trainModel(model, opt, device, scheduler, accuracyFNPolicy, accuracyFNValue, mcts, game, numSelfPlayGames, startEpoch, endEpoch=10, lossFN = nn.MSELoss()):
     dataset = []
+    print("Creating training data")
     trainExamples = mcts.runSelfPlay(game=game, numGames=numSelfPlayGames)
     testExamples = mcts.runSelfPlay(game=game, numGames=numSelfPlayGames)
     dataset.extend(trainExamples)
 
     trainLoader = DataLoader(AWBWDataset(dataset), batch_size=32, shuffle=True, num_workers=0, pin_memory=True)
     testLoader = DataLoader(AWBWDataset(testExamples), batch_size=32, shuffle=False, num_workers=0, pin_memory=True, drop_last=False)
+    model.to(device)
 
     trainingLoop(model, trainLoader, testLoader, lossFN, opt, device, scheduler, accuracyFNPolicy, accuracyFNValue, startEpoch, endEpoch)
 
@@ -83,7 +86,7 @@ def trainModel(model, lossFN, opt, device, scheduler, accuracyFNPolicy, accuracy
 def trainingLoop(model: torch.nn.Module,
         trainDataLoader: torch.utils.data.DataLoader, 
         testDataLoader: torch.utils.data.DataLoader,
-        lossFN: torch.nn.Module,
+        lossFN,
         opt: torch.optim.Optimizer,
         device,
         scheduler,
@@ -155,7 +158,7 @@ def trainStep(model, dataLoader, lossFN, opt, accuracyFNPolicy, accuracyFNValue,
         
 
         policyTrainAcc = accuracyFNPolicy(policyPreds, piStar)
-        valueTrainAcc += accuracyFNValue(valuesTrue, valuePreds.argmax(dim=1))
+        valueTrainAcc += accuracyFNValue(valuesTrue, valuePreds)
 
         loss.backward()
         opt.step()
@@ -204,8 +207,14 @@ def saveTrainingCheckpoint(path, model, optimizer, scheduler, epoch, bestValLoss
 def loadTrainingCheckpoint(path, model, optimizer=None, scheduler=None):
     ckpt = torch.load(path, map_location="mps")
     model.load_state_dict(ckpt["modelState"])
+    
     if optimizer and ckpt["optimState"]:
         optimizer.load_state_dict(ckpt["optimState"])
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to("mps")
+
     if scheduler and ckpt.get("schedState"):
         scheduler.load_state_dict(ckpt["schedState"])
     return ckpt["epoch"], ckpt.get("bestValLoss", float('inf'))

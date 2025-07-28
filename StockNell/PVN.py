@@ -52,9 +52,21 @@ class PVN(nn.Module):
 
     def forward(self, state, legalMask=None):
         state = F.relu(self.convTrunk(state))
-        chnls, h, w = state.shape
 
-        flatten = state.view(chnls * h * w)
+        # Normalization step that is needed since both 3D and 4D tensors (with and without the batch)
+        # are passed into this function (3D in self play, 4D in training loop)
+        singleExample = False
+        if state.dim() == 3:           # [C, H, W]
+            state = state.unsqueeze(0) # [1, C, H, W]
+            singleExample = True
+
+            if legalMask is not None and legalMask.dim() == 1:
+                legalMask = legalMask.unsqueeze(0)
+        
+        #print(state.shape)
+        batch, chnls, h, w = state.shape
+
+        flatten = state.view(batch, chnls * h * w)
 
         # Policy
         logits = self.policyHead(flatten)
@@ -65,6 +77,10 @@ class PVN(nn.Module):
         
         value = F.relu(self.valueHead(flatten))
         value = torch.tanh(value).squeeze(-1) # Removes the Batch in B, C, H, W
+
+        if singleExample:
+            policy = policy.squeeze(0)   # [A]
+            value  = value.squeeze(0) 
 
         return policy, value
 

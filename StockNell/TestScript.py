@@ -62,7 +62,7 @@ if os.path.exists(MODEL_SAVE_PATH):
     )
     print(f"Resuming from epoch {startEpoch} with best_val={bestVal:.4f}")
 
-trainModel(network, nn.CrossEntropyLoss, optimizer, "mps", scheduler, accuracyFNPolicy, accuracyFNValue, mctsComplex, game, 2, startEpoch)
+trainModel(network, optimizer, "mps", scheduler, accuracyFNPolicy, accuracyFNValue, mctsComplex, game, 2, startEpoch, endEpoch=100)
 
 # s, pi, z, mask = ex[0]
 # print(s.shape)
